@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="AIInterview.Application/AIInterview.Application.csproj" />
+  <Project Path="AIInterview.Core/AIInterview.Core.csproj" />
+  <Project Path="AIInterview.Infrastructure/AIInterview.Infrastructure.csproj" />
+  <Project Path="AIInterview.Server/AIInterview.Server.csproj" />
+</Solution>
