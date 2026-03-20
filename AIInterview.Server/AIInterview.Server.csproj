@@ -11,4 +11,9 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.5" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\AIInterview.Application\AIInterview.Application.csproj" />
+    <ProjectReference Include="..\AIInterview.Infrastructure\AIInterview.Infrastructure.csproj" />
+  </ItemGroup>
+
 </Project>
