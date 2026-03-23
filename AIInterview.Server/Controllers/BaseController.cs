@@ -1,4 +1,6 @@
-﻿namespace AIInterview.Server.Controllers
+﻿using Microsoft.AspNetCore.Mvc;
+
+namespace AIInterview.Server.Controllers
 {
     public class BaseController : Controller
     {
