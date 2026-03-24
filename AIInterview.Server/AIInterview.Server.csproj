@@ -20,4 +20,8 @@
     <ProjectReference Include="..\AIInterview.Infrastructure\AIInterview.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Middlewares\" />
+  </ItemGroup>
+
 </Project>

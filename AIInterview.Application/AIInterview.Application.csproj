@@ -10,4 +10,8 @@
     <ProjectReference Include="..\AIInterview.Core\AIInterview.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Extensions\" />
+  </ItemGroup>
+
 </Project>

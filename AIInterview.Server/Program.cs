@@ -1,6 +1,5 @@
 using AIInterview.Infrastructure.Data;
-using AIInterview.Infrastructure.Models;
-using Microsoft.AspNetCore.Identity;
+using AIInterview.Server.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,9 +15,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
           options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
-    .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddDefaultTokenProviders();
+builder.Services.ConfigureIdentity();
 
 var app = builder.Build();
 
