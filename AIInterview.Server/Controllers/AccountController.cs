@@ -1,7 +1,9 @@
 ﻿using AIInterview.Application.Services;
 using AIInterview.Core.Constants;
 using AIInterview.Core.DTOs.Auth;
+using AIInterview.Core.DTOs.User;
 using AIInterview.Infrastructure.Models;
+using Google.Apis.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -10,7 +12,7 @@ namespace AIInterview.Server.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class AccountController(UserManager<ApplicationUser> userManager , JwtAuthManager jwtAuthManager) : BaseController
+    public class AccountController(UserManager<ApplicationUser> userManager , JwtAuthManager jwtAuthManager , IConfiguration configuration) : BaseController
     {
         [ApiExplorerSettings(IgnoreApi = true)]
         [HttpPost("register")]
@@ -153,5 +155,63 @@ namespace AIInterview.Server.Controllers
             }
         }
 
+        [HttpPost("google-login")]
+        public async Task<IActionResult> GoogleLogin(GoogleLoginDto request)
+        {
+            try
+            {
+                GoogleJsonWebSignature.Payload payload;
+                try
+                {
+                    var settings = new GoogleJsonWebSignature.ValidationSettings
+                    {
+                        Audience = new[] { configuration["Google:ClientId"] }
+                    };
+                    payload = await GoogleJsonWebSignature.ValidateAsync(request.IdToken, settings);
+                }
+                catch (Exception)
+                {
+                    return CustomUnauthorized401(
+                        message: "Invalid Google token.",
+                        errorCategory: ErrorCategory.LOGIN_401
+                    );
+                }
+
+                var user = await userManager.FindByEmailAsync(payload.Email);
+
+                if (user is null)
+                {
+                    user = new ApplicationUser
+                    {
+                        UserName = payload.Email,
+                        Email = payload.Email,
+                        FullName = payload.Name,
+                        EmailConfirmed = true  
+                    };
+
+                    var createResult = await userManager.CreateAsync(user);
+                    if (!createResult.Succeeded)
+                    {
+                        return CustomProblem500(string.Join(", ", createResult.Errors.Select(e => e.Description)));
+                    }
+
+                    await userManager.AddToRoleAsync(user, request.Role);
+                }
+
+                var jwtResult = await jwtAuthManager.GenerateTokens(user.Id, user.UserName);
+
+                return Ok(new LoginResp
+                {
+                    Email = user.Email,
+                    AccessToken = jwtResult.AccessToken,
+                    AccessTokenExpiration = jwtResult.AccessTokenExpiration,
+                    RefreshToken = jwtResult.RefreshToken
+                });
+            }
+            catch (Exception ex)
+            {
+                return CustomProblem500(ex.Message);
+            }
+        }
     }
 }
