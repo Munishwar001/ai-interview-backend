@@ -1,4 +1,6 @@
-﻿using AIInterview.Core.Comman;
+﻿using AIInterview.Application.Interface;
+using AIInterview.Application.Services;
+using AIInterview.Core.Comman;
 using AIInterview.Infrastructure.Data;
 using AIInterview.Infrastructure.Seed;
 using AIInterview.Server.Extensions;
@@ -33,6 +35,8 @@ namespace AIInterview.Server
             services.Configure<JwtConfig>(options => config.GetSection("Jwt").Bind(options));
             
             services.RegisterServices(connectionString);
+            
+            services.AddHttpClient<IAiService, GeminiAiService>();
 
         }
 

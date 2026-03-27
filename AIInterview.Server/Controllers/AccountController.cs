@@ -1,7 +1,6 @@
 ﻿using AIInterview.Application.Services;
 using AIInterview.Core.Constants;
 using AIInterview.Core.DTOs.Auth;
-using AIInterview.Core.DTOs.User;
 using AIInterview.Infrastructure.Models;
 using Google.Apis.Auth;
 using Microsoft.AspNetCore.Authorization;

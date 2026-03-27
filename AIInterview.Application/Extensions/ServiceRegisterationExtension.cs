@@ -10,6 +10,8 @@ namespace AIInterview.Application.Extensions
         {
             services.AddScoped<JwtAuthManager>();
             services.AddScoped<UserService>();
+            services.AddScoped<JobService>();
+            services.AddScoped<LookupService>();
             services.AddScoped<IEncryptionService ,EncryptionService>();
 
             return services;

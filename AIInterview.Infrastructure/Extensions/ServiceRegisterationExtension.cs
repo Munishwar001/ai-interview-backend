@@ -12,6 +12,9 @@ namespace AIInterview.Infrastructure.Extensions
         {
             services.AddScoped<IDbConnection>(_ => new NpgsqlConnection(connectionString));
             services.AddScoped<IUserRepository ,UserRepository>();
+            services.AddScoped<IJobRepository, JobRepository>();
+            services.AddScoped<ILookupRepository, LookupRepository>();
+
             return services;
         }
     }
