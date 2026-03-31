@@ -24,26 +24,6 @@ namespace AIInterview.Server.Controllers
             return Ok(new { jobId });
         }
 
-        [HttpPost("generate-description")]
-        public async Task<IActionResult> GenerateDescription([FromBody] GenerateDescriptionDto request,[FromServices] IAiService aiService)
-        {
-            var prompt = $@"
-                    Generate a professional job description.
-
-                    Role: {request.Title}
-                    Skills: {string.Join(", ", request.Skills)}
-
-                    Include:
-                    - Responsibilities
-                    - Requirements
-                    - Keep it under 150 words
-                    ";
-
-            var result = await aiService.GenerateJobDescription(prompt);
-
-            return Ok(new { description = result });
-        }
-
         //[HttpGet]
         //public async Task<IActionResult> GetAllJobs()
         //{
@@ -63,5 +43,25 @@ namespace AIInterview.Server.Controllers
         //{
         //    return Ok(await _jobService.GetJobsByEmployerAsync(employerId));
         //}
+
+        [HttpPost("generate-description")]
+        public async Task<IActionResult> GenerateDescription([FromBody] GenerateDescriptionDto request, [FromServices] IAiService aiService)
+        {
+            var prompt = $@"
+                    Generate a professional job description.
+
+                    Role: {request.Title}
+                    Skills: {string.Join(", ", request.Skills)}
+
+                    Include:
+                    - Responsibilities
+                    - Requirements
+                    - Keep it under 150 words
+                    ";
+
+            var result = await aiService.GenerateJobDescription(prompt);
+
+            return Ok(new { description = result });
+        }
     }
 }

@@ -1,53 +1,63 @@
 ﻿using AIInterview.Application.Interface;
 using Microsoft.Extensions.Configuration;
-using System.Net.Http.Json;
+using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
 
 namespace AIInterview.Application.Services
 {
-    public class GeminiAiService : IAiService
+    public class GroqAiService : IAiService
     {
         private readonly HttpClient _httpClient;
         private readonly string _apiKey;
 
-        public GeminiAiService(HttpClient httpClient, IConfiguration config)
+        public GroqAiService(HttpClient httpClient, IConfiguration config)
         {
             _httpClient = httpClient;
-            _apiKey = config["Gemini:ApiKey"];
+            _apiKey = config["Groq:ApiKey"]
+                ?? throw new InvalidOperationException("Groq API key missing.");
         }
 
         public async Task<string> GenerateJobDescription(string prompt)
         {
-            var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={_apiKey}";
+            var url = "https://api.groq.com/openai/v1/chat/completions";
 
-            var body = new
+            _httpClient.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("Bearer", _apiKey);
+
+            var requestBody = new
             {
-                contents = new[]
+                model = "llama-3.3-70b-versatile",
+                messages = new[]
                 {
-                new
-                {
-                    parts = new[]
-                    {
-                        new { text = prompt }
-                    }
-                }
-            }
+                    new { role = "system", content = "You are a helpful AI that generates job descriptions." },
+                    new { role = "user", content = prompt }
+                },
+                temperature = 0.7
             };
 
-            var response = await _httpClient.PostAsJsonAsync(url, body);
+            var jsonContent = new StringContent(
+                JsonSerializer.Serialize(requestBody),
+                Encoding.UTF8,
+                "application/json"
+            );
+
+            var response = await _httpClient.PostAsync(url, jsonContent);
 
             if (!response.IsSuccessStatusCode)
-                throw new Exception("Gemini API failed");
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                throw new Exception($"Groq API failed: {(int)response.StatusCode} - {error}");
+            }
 
-            var json = await response.Content.ReadAsStringAsync();
+            var responseJson = await response.Content.ReadAsStringAsync();
 
-            using var doc = JsonDocument.Parse(json);
+            using var doc = JsonDocument.Parse(responseJson);
 
             return doc.RootElement
-                .GetProperty("candidates")[0]
+                .GetProperty("choices")[0]
+                .GetProperty("message")
                 .GetProperty("content")
-                .GetProperty("parts")[0]
-                .GetProperty("text")
                 .GetString();
         }
     }

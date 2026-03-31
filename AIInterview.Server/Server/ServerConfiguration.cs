@@ -36,7 +36,7 @@ namespace AIInterview.Server
             
             services.RegisterServices(connectionString);
             
-            services.AddHttpClient<IAiService, GeminiAiService>();
+            services.AddHttpClient<IAiService, GroqAiService>();
 
         }
 
