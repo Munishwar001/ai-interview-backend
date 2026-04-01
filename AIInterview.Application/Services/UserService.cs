@@ -5,7 +5,17 @@ namespace AIInterview.Application.Services
 {
     public class UserService(IUserRepository userRepository)
     {
-        public async Task<IEnumerable<UserRole>> GetUserRoles(string userID) => await userRepository.GetUserRoles(userID);
+        public async Task<IEnumerable<UserRole>> GetUserRoles(string userID)
+        {
+            try
+            {
+                return await userRepository.GetUserRoles(userID);
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
 
     }
 }

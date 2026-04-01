@@ -19,9 +19,16 @@ namespace AIInterview.Server.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateJob([FromBody] CreateJobDto request)
         {
-            request.EmployerId = CurrentUserID;
-            var jobId = await _jobService.CreateJobAsync(request);
-            return Ok(new { jobId });
+            try
+            {
+                request.EmployerId = CurrentUserID;
+                var jobId = await _jobService.CreateJobAsync(request);
+                return Ok(new { jobId });
+            }
+            catch (Exception ex)
+            {
+                return CustomProblem500(ex.Message);
+            }
         }
 
         //[HttpGet]
@@ -47,7 +54,9 @@ namespace AIInterview.Server.Controllers
         [HttpPost("generate-description")]
         public async Task<IActionResult> GenerateDescription([FromBody] GenerateDescriptionDto request, [FromServices] IAiService aiService)
         {
-            var prompt = $@"
+            try
+            {
+                var prompt = $@"
                     Generate a professional job description.
 
                     Role: {request.Title}
@@ -59,9 +68,13 @@ namespace AIInterview.Server.Controllers
                     - Keep it under 150 words
                     ";
 
-            var result = await aiService.GenerateJobDescription(prompt);
-
-            return Ok(new { description = result });
+                var result = await aiService.GenerateJobDescription(prompt);
+                return Ok(new { description = result });
+            }
+            catch (Exception ex)
+            {
+                return CustomProblem500(ex.Message);
+            }
         }
     }
 }

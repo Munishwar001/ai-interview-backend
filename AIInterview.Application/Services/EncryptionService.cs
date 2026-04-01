@@ -35,7 +35,7 @@ namespace AIInterview.Application.Services
                 }
 
             }
-            catch (Exception ex)
+            catch (Exception)
             {
 
                 throw;

@@ -20,7 +20,7 @@ namespace AIInterview.Infrastructure.DataAccess
 
                 return await connection.QueryAsync<UserRole>(sql, new { UserId = userId });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 throw;
             }
@@ -47,7 +47,7 @@ namespace AIInterview.Infrastructure.DataAccess
 
                 return result > 0;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 throw;
             }
@@ -67,7 +67,7 @@ namespace AIInterview.Infrastructure.DataAccess
 
                 return result;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 throw;
             }
@@ -75,7 +75,6 @@ namespace AIInterview.Infrastructure.DataAccess
 
         public async Task<bool> DeleteUserRefreshToken(string userId, string refreshToken)
         {
-
             try
             {
                 const string sql = @"DELETE FROM user_refresh_tokens  WHERE user_id = @UserID AND refresh_token = @OldRefreshToken;";
@@ -86,15 +85,9 @@ namespace AIInterview.Infrastructure.DataAccess
 
                 var result = await connection.ExecuteAsync(sql, param);
 
-                if (result > 0)
-                {
-
-                    return true;
-                }
-
-                return false;
+                return result > 0;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 throw;
             }

@@ -14,12 +14,26 @@ namespace AIInterview.Application.Services
 
         public async Task<IEnumerable<dynamic>> GetJobTypesAsync()
         {
-            return await _repository.GetJobTypesAsync();
+            try
+            {
+                return await _repository.GetJobTypesAsync();
+            }
+            catch (Exception)
+            {
+                throw;
+            }
         }
 
         public async Task<IEnumerable<LookupDto>> GetSkillsAsync()
         {
-            return await _repository.GetSkillsAsync();
+            try
+            {
+                return await _repository.GetSkillsAsync();
+            }
+            catch (Exception)
+            {
+                throw;
+            }
         }
 
     }
