@@ -65,7 +65,7 @@ namespace AIInterview.Application.Services
                     RefreshToken = refreshToken
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 throw;
             }
@@ -81,7 +81,7 @@ namespace AIInterview.Application.Services
 
                 return newRefreshToken;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 throw;
             }
@@ -119,7 +119,7 @@ namespace AIInterview.Application.Services
 
                 return _encryptionService.Decrypt(userId);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 throw;
             }
@@ -145,7 +145,7 @@ namespace AIInterview.Application.Services
                 }
                 return true;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 throw;
             }
@@ -157,7 +157,7 @@ namespace AIInterview.Application.Services
             {
                 return await _userRepository.DeleteUserRefreshToken(userId, refreshToken);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 throw;
             }

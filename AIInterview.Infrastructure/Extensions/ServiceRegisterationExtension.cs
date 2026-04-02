@@ -14,6 +14,7 @@ namespace AIInterview.Infrastructure.Extensions
             services.AddScoped<IUserRepository ,UserRepository>();
             services.AddScoped<IJobRepository, JobRepository>();
             services.AddScoped<ILookupRepository, LookupRepository>();
+            services.AddScoped<ICompanyRepository, CompanyRepository>();
 
             return services;
         }

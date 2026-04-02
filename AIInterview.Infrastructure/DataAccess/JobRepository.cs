@@ -15,51 +15,79 @@ namespace AIInterview.Infrastructure.DataAccess
 
         public async Task<int> CreateJobAsync(CreateJobDto request)
         {
-            var sql = @"
-            INSERT INTO jobs (title, description, location, salarymin, salarymax, companyname, employerid)
-            VALUES (@Title, @Description, @Location, @SalaryMin, @SalaryMax, @CompanyName, @EmployerId)
-            RETURNING id;
-        ";
-
-            var jobId = await _db.ExecuteScalarAsync<int>(sql, request);
-
-            if (request.SkillIds != null && request.SkillIds.Any())
+            try
             {
-                foreach (var skillId in request.SkillIds)
-                {
-                    await _db.ExecuteAsync(@"
-                    INSERT INTO job_skills (job_id, skill_id)
-                    VALUES (@JobId, @SkillId)",
-                        new { JobId = jobId, SkillId = skillId });
-                }
-            }
+                var sql = @"
+                INSERT INTO jobs (title, description, location, salarymin, salarymax, companyname, employerid)
+                VALUES (@Title, @Description, @Location, @SalaryMin, @SalaryMax, @CompanyName, @EmployerId)
+                RETURNING id;
+            ";
 
-            return jobId;
+                var jobId = await _db.ExecuteScalarAsync<int>(sql, request);
+
+                if (request.SkillIds != null && request.SkillIds.Any())
+                {
+                    foreach (var skillId in request.SkillIds)
+                    {
+                        await _db.ExecuteAsync(@"
+                        INSERT INTO job_skills (job_id, skill_id)
+                        VALUES (@JobId, @SkillId)",
+                            new { JobId = jobId, SkillId = skillId });
+                    }
+                }
+
+                return jobId;
+            }
+            catch (Exception)
+            {
+                throw;
+            }
         }
 
         public async Task<IEnumerable<object>> GetAllJobsAsync()
         {
-            return await _db.QueryAsync("SELECT * FROM jobs ORDER BY createdat DESC");
+            try
+            {
+                return await _db.QueryAsync("SELECT * FROM jobs ORDER BY createdat DESC");
+            }
+            catch (Exception)
+            {
+                throw;
+            }
         }
 
         public async Task<object> GetJobByIdAsync(int id)
         {
-            var job = await _db.QueryFirstOrDefaultAsync("SELECT * FROM jobs WHERE id = @Id", new { Id = id });
+            try
+            {
+                var job = await _db.QueryFirstOrDefaultAsync("SELECT * FROM jobs WHERE id = @Id", new { Id = id });
 
-            if (job == null) return null;
+                if (job == null) return null;
 
-            var skills = await _db.QueryAsync(@"
-            SELECT s.id, s.name FROM job_skills js JOIN skills s ON js.skill_id = s.id WHERE js.job_id = @JobId",
-                new { JobId = id });
+                var skills = await _db.QueryAsync(@"
+                SELECT s.id, s.name FROM job_skills js JOIN skills s ON js.skill_id = s.id WHERE js.job_id = @JobId",
+                    new { JobId = id });
 
-            return new { job, skills };
+                return new { job, skills };
+            }
+            catch (Exception)
+            {
+                throw;
+            }
         }
 
         public async Task<IEnumerable<object>> GetJobsByEmployerAsync(string employerId)
         {
-            return await _db.QueryAsync(@"
-            SELECT * FROM jobs WHERE employerid = @EmployerId ORDER BY createdat DESC",
-                new { EmployerId = employerId });
+            try
+            {
+                return await _db.QueryAsync(@"
+                SELECT * FROM jobs WHERE employerid = @EmployerId ORDER BY createdat DESC",
+                    new { EmployerId = employerId });
+            }
+            catch (Exception)
+            {
+                throw;
+            }
         }
     }
 }

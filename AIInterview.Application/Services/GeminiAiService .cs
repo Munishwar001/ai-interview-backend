@@ -20,45 +20,52 @@ namespace AIInterview.Application.Services
 
         public async Task<string> GenerateJobDescription(string prompt)
         {
-            var url = "https://api.groq.com/openai/v1/chat/completions";
-
-            _httpClient.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", _apiKey);
-
-            var requestBody = new
+            try
             {
-                model = "llama-3.3-70b-versatile",
-                messages = new[]
+                var url = "https://api.groq.com/openai/v1/chat/completions";
+
+                _httpClient.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", _apiKey);
+
+                var requestBody = new
                 {
-                    new { role = "system", content = "You are a helpful AI that generates job descriptions." },
-                    new { role = "user", content = prompt }
-                },
-                temperature = 0.7
-            };
+                    model = "llama-3.3-70b-versatile",
+                    messages = new[]
+                    {
+                        new { role = "system", content = "You are a helpful AI that generates job descriptions." },
+                        new { role = "user", content = prompt }
+                    },
+                    temperature = 0.7
+                };
 
-            var jsonContent = new StringContent(
-                JsonSerializer.Serialize(requestBody),
-                Encoding.UTF8,
-                "application/json"
-            );
+                var jsonContent = new StringContent(
+                    JsonSerializer.Serialize(requestBody),
+                    Encoding.UTF8,
+                    "application/json"
+                );
 
-            var response = await _httpClient.PostAsync(url, jsonContent);
+                var response = await _httpClient.PostAsync(url, jsonContent);
 
-            if (!response.IsSuccessStatusCode)
-            {
-                var error = await response.Content.ReadAsStringAsync();
-                throw new Exception($"Groq API failed: {(int)response.StatusCode} - {error}");
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    throw new Exception($"Groq API failed: {(int)response.StatusCode} - {error}");
+                }
+
+                var responseJson = await response.Content.ReadAsStringAsync();
+
+                using var doc = JsonDocument.Parse(responseJson);
+
+                return doc.RootElement
+                    .GetProperty("choices")[0]
+                    .GetProperty("message")
+                    .GetProperty("content")
+                    .GetString();
             }
-
-            var responseJson = await response.Content.ReadAsStringAsync();
-
-            using var doc = JsonDocument.Parse(responseJson);
-
-            return doc.RootElement
-                .GetProperty("choices")[0]
-                .GetProperty("message")
-                .GetProperty("content")
-                .GetString();
+            catch (Exception)
+            {
+                throw;
+            }
         }
     }
 }
