@@ -18,6 +18,7 @@ namespace AIInterview.Infrastructure.Extensions
             services.AddScoped<IUserProfileRepository, UserProfileRepository>();
             services.AddScoped<IUserExperienceRepository, UserExperienceRepository>();
             services.AddScoped<IUserEducationRepository, UserEducationRepository>();
+            services.AddScoped<IUserSkillRepository, UserSkillRepository>();
 
             return services;
         }

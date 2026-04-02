@@ -15,6 +15,7 @@ namespace AIInterview.Server.Controllers
         private readonly IUserProfileRepository _userProfileRepository;
         private readonly IUserExperienceRepository _experienceRepository;
         private readonly IUserEducationRepository _educationRepository;
+        private readonly IUserSkillRepository _skillRepository;
         private readonly IWebHostEnvironment _env;
 
         public JobSeekerController(
@@ -22,12 +23,14 @@ namespace AIInterview.Server.Controllers
             IUserProfileRepository userProfileRepository,
             IUserExperienceRepository experienceRepository,
             IUserEducationRepository educationRepository,
+            IUserSkillRepository skillRepository,
             IWebHostEnvironment env)
         {
             _userProfileService = userProfileService;
             _userProfileRepository = userProfileRepository;
             _experienceRepository = experienceRepository;
             _educationRepository = educationRepository;
+            _skillRepository = skillRepository;
             _env = env;
         }
 
@@ -193,6 +196,31 @@ namespace AIInterview.Server.Controllers
                 var success = await _educationRepository.DeleteAsync(id, CurrentUserID);
                 if (!success) return CustomProblem400("Education not found or unauthorized.");
                 return Ok(new { success });
+            }
+            catch (Exception ex) { return CustomProblem500(ex.Message); }
+        }
+
+
+        [HttpGet("skills")]
+        public async Task<IActionResult> GetSkills()
+        {
+            try
+            {
+                var result = await _skillRepository.GetByUserIdAsync(CurrentUserID);
+                return Ok(result);
+            }
+            catch (Exception ex) { return CustomProblem500(ex.Message); }
+        }
+
+        // Sends full list of skill IDs — replaces existing
+        // Body: { "skillIds": [1, 2, 3] }
+        [HttpPut("skills")]
+        public async Task<IActionResult> SyncSkills([FromBody] SyncSkillsDto request)
+        {
+            try
+            {
+                await _skillRepository.SyncAsync(CurrentUserID, request.SkillIds);
+                return Ok(new { success = true });
             }
             catch (Exception ex) { return CustomProblem500(ex.Message); }
         }
