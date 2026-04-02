@@ -8,5 +8,6 @@ namespace AIInterview.Application.Interface
         Task<int> InsertAsync(CompanyProfile profile);
         Task UpdateAsync(CompanyProfile profile);
         Task<CompanyProfileResponseDto?> GetProfileWithSizeAsync(string userId);
+        Task UpdateImageAsync(string userId, string? logoUrl, string? coverImageUrl);
     }
 }

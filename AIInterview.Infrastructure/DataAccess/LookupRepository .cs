@@ -40,5 +40,18 @@ namespace AIInterview.Infrastructure.DataAccess
             }
         }
 
+        public async Task<IEnumerable<LookupDto>> GetCompanySizesAsync()
+        {
+            try
+            {
+                var query = "SELECT id, label AS Name FROM company_sizes ORDER BY id";
+                return await _db.QueryAsync<LookupDto>(query);
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+
     }
 }

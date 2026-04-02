@@ -50,6 +50,8 @@ namespace AIInterview.Server
 
             app.UseHttpsRedirection();
 
+            app.UseStaticFiles();
+
             app.UseCors("AllowFrontend");
 
             app.UseAuthentication();

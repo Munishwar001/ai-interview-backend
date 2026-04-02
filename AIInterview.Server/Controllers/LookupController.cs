@@ -42,5 +42,19 @@ namespace AIInterview.Server.Controllers
             }
         }
 
+        [HttpGet("company-sizes")]
+        public async Task<IActionResult> GetCompanySizes()
+        {
+            try
+            {
+                var result = await _service.GetCompanySizesAsync();
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return CustomProblem500(ex.Message);
+            }
+        }
+
     }
 }

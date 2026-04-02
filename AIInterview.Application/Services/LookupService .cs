@@ -36,5 +36,17 @@ namespace AIInterview.Application.Services
             }
         }
 
+        public async Task<IEnumerable<LookupDto>> GetCompanySizesAsync()
+        {
+            try
+            {
+                return await _repository.GetCompanySizesAsync();
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+
     }
 }
