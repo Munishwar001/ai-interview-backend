@@ -14,6 +14,7 @@ namespace AIInterview.Application.Extensions
             services.AddScoped<LookupService>();
             services.AddScoped<CompanyService>();
             services.AddScoped<UserProfileService>();
+            services.AddScoped<JobSeekerService>();
             services.AddScoped<IEncryptionService ,EncryptionService>();
 
             return services;

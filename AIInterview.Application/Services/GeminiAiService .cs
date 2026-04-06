@@ -6,36 +6,49 @@ using System.Text.Json;
 
 namespace AIInterview.Application.Services
 {
-    public class GroqAiService : IAiService
+    public class GeminiAiService : IAiService
     {
         private readonly HttpClient _httpClient;
         private readonly string _apiKey;
+        private const string Model = "gemini-2.5-flash-lite";
 
-        public GroqAiService(HttpClient httpClient, IConfiguration config)
+        public GeminiAiService(HttpClient httpClient, IConfiguration config)
         {
             _httpClient = httpClient;
-            _apiKey = config["Groq:ApiKey"]
-                ?? throw new InvalidOperationException("Groq API key missing.");
+            _apiKey = config["Gemini:ApiKey"]
+                ?? throw new InvalidOperationException("Gemini API key missing.");
         }
 
         public async Task<string> GenerateJobDescription(string prompt)
         {
             try
             {
-                var url = "https://api.groq.com/openai/v1/chat/completions";
-
-                _httpClient.DefaultRequestHeaders.Authorization =
-                    new AuthenticationHeaderValue("Bearer", _apiKey);
+                var url = $"https://generativelanguage.googleapis.com/v1beta/models/{Model}:generateContent?key={_apiKey}";
 
                 var requestBody = new
                 {
-                    model = "llama-3.3-70b-versatile",
-                    messages = new[]
+                    system_instruction = new
                     {
-                        new { role = "system", content = "You are a helpful AI that generates job descriptions." },
-                        new { role = "user", content = prompt }
+                        parts = new[]
+                        {
+                            new { text = "You are a helpful AI that generates job descriptions." }
+                        }
                     },
-                    temperature = 0.7
+                    contents = new[]
+                    {
+                        new
+                        {
+                            role = "user",
+                            parts = new[]
+                            {
+                                new { text = prompt }
+                            }
+                        }
+                    },
+                    generationConfig = new
+                    {
+                        temperature = 0.7
+                    }
                 };
 
                 var jsonContent = new StringContent(
@@ -49,7 +62,7 @@ namespace AIInterview.Application.Services
                 if (!response.IsSuccessStatusCode)
                 {
                     var error = await response.Content.ReadAsStringAsync();
-                    throw new Exception($"Groq API failed: {(int)response.StatusCode} - {error}");
+                    throw new Exception($"Gemini API failed: {(int)response.StatusCode} - {error}");
                 }
 
                 var responseJson = await response.Content.ReadAsStringAsync();
@@ -57,9 +70,10 @@ namespace AIInterview.Application.Services
                 using var doc = JsonDocument.Parse(responseJson);
 
                 return doc.RootElement
-                    .GetProperty("choices")[0]
-                    .GetProperty("message")
+                    .GetProperty("candidates")[0]
                     .GetProperty("content")
+                    .GetProperty("parts")[0]
+                    .GetProperty("text")
                     .GetString();
             }
             catch (Exception)

@@ -20,6 +20,8 @@ namespace AIInterview.Server.Controllers
             _env = env;
         }
 
+        #region Profile
+
         [HttpGet("me")]
         public async Task<IActionResult> GetMyCompanyProfile()
         {
@@ -28,13 +30,9 @@ namespace AIInterview.Server.Controllers
                 var result = await _companyService.GetByUserIdAsync(CurrentUserID);
                 return Ok(result);
             }
-            catch (Exception ex)
-            {
-                return CustomProblem500(ex.Message);
-            }
+            catch (Exception ex) { return CustomProblem500(ex.Message); }
         }
 
-        // Send as application/json
         [HttpPut]
         public async Task<IActionResult> UpsertCompanyProfile([FromBody] UpdateCompanyProfileDto request)
         {
@@ -44,11 +42,12 @@ namespace AIInterview.Server.Controllers
                 var result = await _companyService.UpsertAsync(request);
                 return Ok(result);
             }
-            catch (Exception ex)
-            {
-                return CustomProblem500(ex.Message);
-            }
+            catch (Exception ex) { return CustomProblem500(ex.Message); }
         }
+
+        #endregion
+
+        #region AI
 
         [HttpPost("generate-description")]
         public async Task<IActionResult> GenerateDescription(
@@ -73,14 +72,13 @@ namespace AIInterview.Server.Controllers
                 var result = await aiService.GenerateJobDescription(prompt);
                 return Ok(new { description = result });
             }
-            catch (Exception ex)
-            {
-                return CustomProblem500(ex.Message);
-            }
+            catch (Exception ex) { return CustomProblem500(ex.Message); }
         }
 
-        // Send as multipart/form-data
-        // Fields: logo (file, optional), coverImage (file, optional)
+        #endregion
+
+        #region Images
+
         [HttpPost("upload-images")]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> UploadImages(IFormFile? logo, IFormFile? coverImage)
@@ -101,14 +99,8 @@ namespace AIInterview.Server.Controllers
                 var result = await _companyService.UpdateImagesAsync(CurrentUserID, logoUrl, coverUrl);
                 return Ok(result);
             }
-            catch (InvalidOperationException ex)
-            {
-                return CustomProblem400(ex.Message);
-            }
-            catch (Exception ex)
-            {
-                return CustomProblem500(ex.Message);
-            }
+            catch (InvalidOperationException ex) { return CustomProblem400(ex.Message); }
+            catch (Exception ex) { return CustomProblem500(ex.Message); }
         }
 
         private async Task<string> SaveFileAsync(IFormFile file, string folder, string prefix)
@@ -130,5 +122,7 @@ namespace AIInterview.Server.Controllers
 
             return $"/uploads/company/{fileName}";
         }
+
+        #endregion
     }
 }

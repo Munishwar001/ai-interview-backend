@@ -31,5 +31,6 @@ namespace AIInterview.Core.DTOs.JobSeeker
         public string? LinkedIn { get; set; }
         public string? GitHub { get; set; }
         public string? Website { get; set; }
+        public int ProfileCompletion { get; set; }
     }
 }

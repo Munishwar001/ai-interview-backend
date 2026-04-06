@@ -44,9 +44,9 @@ namespace AIInterview.Infrastructure.DataAccess
             {
                 var sql = @"
                 INSERT INTO user_profiles
-                    (user_id, name, title, location, email, avatar, initial, linkedin, github, website, created_at)
+                    (user_id, name, title, location, email, avatar, initial, linkedin, github, website, profile_completion, created_at)
                 VALUES
-                    (@UserId, @Name, @Title, @Location, @Email, @Avatar, @Initial, @LinkedIn, @GitHub, @Website, CURRENT_TIMESTAMP)
+                    (@UserId, @Name, @Title, @Location, @Email, @Avatar, @Initial, @LinkedIn, @GitHub, @Website, @ProfileCompletion, CURRENT_TIMESTAMP)
                 RETURNING id;";
 
                 return await _db.ExecuteScalarAsync<int>(sql, dto);
@@ -60,16 +60,17 @@ namespace AIInterview.Infrastructure.DataAccess
             {
                 var sql = @"
                 UPDATE user_profiles SET
-                    name        = @Name,
-                    title       = @Title,
-                    location    = @Location,
-                    email       = @Email,
-                    avatar      = @Avatar,
-                    initial     = @Initial,
-                    linkedin    = @LinkedIn,
-                    github      = @GitHub,
-                    website     = @Website,
-                    updated_at  = CURRENT_TIMESTAMP
+                    name                = @Name,
+                    title               = @Title,
+                    location            = @Location,
+                    email               = @Email,
+                    avatar              = @Avatar,
+                    initial             = @Initial,
+                    linkedin            = @LinkedIn,
+                    github              = @GitHub,
+                    website             = @Website,
+                    profile_completion  = @ProfileCompletion,
+                    updated_at          = CURRENT_TIMESTAMP
                 WHERE user_id = @UserId;";
 
                 var rows = await _db.ExecuteAsync(sql, dto);
@@ -89,6 +90,54 @@ namespace AIInterview.Infrastructure.DataAccess
                 WHERE user_id = @UserId;";
 
                 var rows = await _db.ExecuteAsync(sql, new { UserId = userId, FileName = fileName, FilePath = filePath });
+                return rows > 0;
+            }
+            catch (Exception) { throw; }
+        }
+
+        public async Task<bool> DeleteResumeAsync(string userId)
+        {
+            try
+            {
+                var sql = @"
+                UPDATE user_profiles SET
+                    resume_file_name = NULL,
+                    resume_file_path = NULL,
+                    updated_at       = CURRENT_TIMESTAMP
+                WHERE user_id = @UserId;";
+
+                var rows = await _db.ExecuteAsync(sql, new { UserId = userId });
+                return rows > 0;
+            }
+            catch (Exception) { throw; }
+        }
+        public async Task<bool> UpdateAvatarAsync(string userId, string avatarPath)
+        {
+            try
+            {
+                var sql = @"
+                UPDATE user_profiles SET
+                    avatar     = @AvatarPath,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = @UserId;";
+
+                var rows = await _db.ExecuteAsync(sql, new { UserId = userId, AvatarPath = avatarPath });
+                return rows > 0;
+            }
+            catch (Exception) { throw; }
+        }
+
+        public async Task<bool> DeleteAvatarAsync(string userId)
+        {
+            try
+            {
+                var sql = @"
+                UPDATE user_profiles SET
+                    avatar     = NULL,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = @UserId;";
+
+                var rows = await _db.ExecuteAsync(sql, new { UserId = userId });
                 return rows > 0;
             }
             catch (Exception) { throw; }

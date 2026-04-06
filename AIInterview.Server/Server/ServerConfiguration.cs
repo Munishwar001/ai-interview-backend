@@ -35,8 +35,8 @@ namespace AIInterview.Server
             services.Configure<JwtConfig>(options => config.GetSection("Jwt").Bind(options));
             
             services.RegisterServices(connectionString);
-            
-            services.AddHttpClient<IAiService, GroqAiService>();
+
+            services.AddHttpClient<IAiService, GeminiAiService>();
 
         }
 

@@ -1,4 +1,4 @@
-﻿using AIInterview.Application.Services;
+using AIInterview.Application.Services;
 using AIInterview.Core.Constants;
 using AIInterview.Core.DTOs.Auth;
 using AIInterview.Infrastructure.Models;

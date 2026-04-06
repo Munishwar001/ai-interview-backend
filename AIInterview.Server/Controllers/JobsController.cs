@@ -7,7 +7,7 @@ namespace AIInterview.Server.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class JobsController :BaseController
+    public class JobsController : BaseController
     {
         private readonly JobService _jobService;
 
@@ -15,6 +15,8 @@ namespace AIInterview.Server.Controllers
         {
             _jobService = jobService;
         }
+
+        #region Jobs
 
         [HttpPost]
         public async Task<IActionResult> CreateJob([FromBody] CreateJobDto request)
@@ -25,31 +27,12 @@ namespace AIInterview.Server.Controllers
                 var jobId = await _jobService.CreateJobAsync(request);
                 return Ok(new { jobId });
             }
-            catch (Exception ex)
-            {
-                return CustomProblem500(ex.Message);
-            }
+            catch (Exception ex) { return CustomProblem500(ex.Message); }
         }
 
-        //[HttpGet]
-        //public async Task<IActionResult> GetAllJobs()
-        //{
-        //    return Ok(await _jobService.GetAllJobsAsync());
-        //}
+        #endregion
 
-        //[HttpGet("{id}")]
-        //public async Task<IActionResult> GetJob(int id)
-        //{
-        //    var job = await _jobService.GetJobByIdAsync(id);
-        //    if (job == null) return NotFound();
-        //    return Ok(job);
-        //}
-
-        //[HttpGet("my-jobs/{employerId}")]
-        //public async Task<IActionResult> GetMyJobs(string employerId)
-        //{
-        //    return Ok(await _jobService.GetJobsByEmployerAsync(employerId));
-        //}
+        #region AI
 
         [HttpPost("generate-description")]
         public async Task<IActionResult> GenerateDescription([FromBody] GenerateDescriptionDto request, [FromServices] IAiService aiService)
@@ -71,10 +54,9 @@ namespace AIInterview.Server.Controllers
                 var result = await aiService.GenerateJobDescription(prompt);
                 return Ok(new { description = result });
             }
-            catch (Exception ex)
-            {
-                return CustomProblem500(ex.Message);
-            }
+            catch (Exception ex) { return CustomProblem500(ex.Message); }
         }
+
+        #endregion
     }
 }
