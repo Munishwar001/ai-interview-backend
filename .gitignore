@@ -10,6 +10,11 @@ dist/
 # 🔹 Environment files
 .env
 
+# 🔹 Secrets
+appsettings.Development.json
+appsettings.Production.json
+secrets.json
+
 # 🔹 Logs
 *.log
 
