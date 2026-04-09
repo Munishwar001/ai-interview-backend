@@ -6,6 +6,7 @@ using AIInterview.Infrastructure.Seed;
 using AIInterview.Server.Extensions;
 using AIInterview.Server.Middlewares;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace AIInterview.Server
 {
@@ -36,7 +37,15 @@ namespace AIInterview.Server
             
             services.RegisterServices(connectionString);
 
-            services.AddHttpClient<IAiService, GeminiAiService>();
+            services.AddHttpClient<GroqAiService>();
+            services.AddHttpClient<OllamaAiService>();
+            services.AddScoped<IAiService>(sp =>
+            {
+                var primary  = sp.GetRequiredService<GroqAiService>();
+                var fallback = sp.GetRequiredService<OllamaAiService>();
+                var logger   = sp.GetRequiredService<ILogger<FallbackAiService>>();
+                return new FallbackAiService(primary, fallback, logger);
+            });
 
         }
 
