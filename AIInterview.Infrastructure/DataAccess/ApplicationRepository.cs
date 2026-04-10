@@ -250,6 +250,116 @@ namespace AIInterview.Infrastructure.DataAccess
             return count > 0;
         }
 
+        public async Task<IEnumerable<ApplicationChatRoomDto>> GetChatRoomsAsync(string userId)
+        {
+            var sql = @"
+            SELECT
+                ja.id AS ApplicationId,
+                ja.job_id AS JobId,
+                COALESCE(j.title, '') AS JobTitle,
+                COALESCE(ja.status, '') AS Status,
+                CASE
+                    WHEN j.employerid = @UserId THEN ja.user_id
+                    ELSE j.employerid
+                END AS ParticipantId,
+                CASE
+                    WHEN j.employerid = @UserId THEN COALESCE(candidate.name, 'Candidate')
+                    ELSE COALESCE(cp.company_name, COALESCE(employer_profile.name, 'Employer'))
+                END AS ParticipantName,
+                CASE
+                    WHEN j.employerid = @UserId THEN candidate.avatar
+                    ELSE cp.logo_url
+                END AS ParticipantAvatar,
+                last_msg.message AS LastMessage,
+                last_msg.created_at AS LastMessageAt
+            FROM job_applications ja
+            INNER JOIN jobs j ON j.id = ja.job_id
+            LEFT JOIN user_profiles candidate ON candidate.user_id = ja.user_id
+            LEFT JOIN user_profiles employer_profile ON employer_profile.user_id = j.employerid
+            LEFT JOIN company_profiles cp ON cp.user_id = j.employerid
+            LEFT JOIN LATERAL (
+                SELECT acm.message, acm.created_at
+                FROM application_chat_messages acm
+                WHERE acm.application_id = ja.id
+                ORDER BY acm.created_at DESC
+                LIMIT 1
+            ) last_msg ON TRUE
+            WHERE (ja.user_id = @UserId OR j.employerid = @UserId)
+              AND ja.status IN ('Shortlisted', 'Hired')
+            ORDER BY COALESCE(last_msg.created_at, ja.applied_at) DESC;";
+
+            return await _db.QueryAsync<ApplicationChatRoomDto>(sql, new { UserId = userId });
+        }
+
+        public async Task<IEnumerable<ApplicationChatMessageDto>> GetChatMessagesAsync(int applicationId, string userId)
+        {
+            var canAccess = await CanAccessApplicationChatAsync(applicationId, userId);
+            if (!canAccess) return [];
+
+            var sql = @"
+            SELECT
+                acm.id AS Id,
+                acm.application_id AS ApplicationId,
+                acm.sender_id AS SenderId,
+                COALESCE(up.name, au.""UserName"", 'User') AS SenderName,
+                acm.message AS Message,
+                acm.created_at AS CreatedAt
+            FROM application_chat_messages acm
+            LEFT JOIN user_profiles up ON up.user_id = acm.sender_id
+            LEFT JOIN ""AspNetUsers"" au ON au.""Id"" = acm.sender_id
+            WHERE acm.application_id = @ApplicationId
+            ORDER BY acm.created_at ASC;";
+
+            return await _db.QueryAsync<ApplicationChatMessageDto>(sql, new { ApplicationId = applicationId });
+        }
+
+        public async Task<ApplicationChatMessageDto?> AddChatMessageAsync(int applicationId, string senderId, string message)
+        {
+            var canAccess = await CanAccessApplicationChatAsync(applicationId, senderId);
+            if (!canAccess) return null;
+
+            var sql = @"
+            INSERT INTO application_chat_messages (application_id, sender_id, message, created_at)
+            VALUES (@ApplicationId, @SenderId, @Message, CURRENT_TIMESTAMP)
+            RETURNING
+                id AS Id,
+                application_id AS ApplicationId,
+                sender_id AS SenderId,
+                COALESCE((
+                    SELECT up.name FROM user_profiles up WHERE up.user_id = sender_id LIMIT 1
+                ), (
+                    SELECT au.""UserName"" FROM ""AspNetUsers"" au WHERE au.""Id"" = sender_id LIMIT 1
+                ), 'User') AS SenderName,
+                message AS Message,
+                created_at AS CreatedAt;";
+
+            return await _db.QueryFirstOrDefaultAsync<ApplicationChatMessageDto>(sql, new
+            {
+                ApplicationId = applicationId,
+                SenderId = senderId,
+                Message = message.Trim()
+            });
+        }
+
+        public async Task<bool> CanAccessApplicationChatAsync(int applicationId, string userId)
+        {
+            var sql = @"
+            SELECT COUNT(1)
+            FROM job_applications ja
+            INNER JOIN jobs j ON j.id = ja.job_id
+            WHERE ja.id = @ApplicationId
+              AND ja.status IN ('Shortlisted', 'Hired')
+              AND (ja.user_id = @UserId OR j.employerid = @UserId);";
+
+            var count = await _db.ExecuteScalarAsync<int>(sql, new
+            {
+                ApplicationId = applicationId,
+                UserId = userId
+            });
+
+            return count > 0;
+        }
+
         public async Task<IEnumerable<PostedJobDto>> GetPublicJobsAsync(string? search, string? location, int? jobTypeId)
         {
             var sql = @"

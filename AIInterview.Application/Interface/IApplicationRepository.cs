@@ -15,6 +15,10 @@ namespace AIInterview.Application.Interface
         Task<bool> UpdateStatusAsync(int applicationId, string employerId, string status);
         Task<int?> ScheduleVideoInterviewAsync(int applicationId, string employerId, DateTime scheduledAt, string? notes);
         Task<IEnumerable<VideoInterviewDto>> GetInterviewsByJobAsync(int jobId, string employerId);
+        Task<IEnumerable<ApplicationChatRoomDto>> GetChatRoomsAsync(string userId);
+        Task<IEnumerable<ApplicationChatMessageDto>> GetChatMessagesAsync(int applicationId, string userId);
+        Task<ApplicationChatMessageDto?> AddChatMessageAsync(int applicationId, string senderId, string message);
+        Task<bool> CanAccessApplicationChatAsync(int applicationId, string userId);
 
         // Job seeker
         Task<IEnumerable<VideoInterviewDto>> GetMyInterviewsAsync(string userId);

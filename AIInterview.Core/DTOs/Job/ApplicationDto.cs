@@ -36,4 +36,32 @@ namespace AIInterview.Core.DTOs.Job
     {
         public string Status { get; set; } = string.Empty; // Pending | Shortlisted | Rejected | Hired
     }
+
+    public class ApplicationChatRoomDto
+    {
+        public int ApplicationId { get; set; }
+        public int JobId { get; set; }
+        public string JobTitle { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public string ParticipantId { get; set; } = string.Empty;
+        public string ParticipantName { get; set; } = string.Empty;
+        public string? ParticipantAvatar { get; set; }
+        public string? LastMessage { get; set; }
+        public DateTime? LastMessageAt { get; set; }
+    }
+
+    public class ApplicationChatMessageDto
+    {
+        public long Id { get; set; }
+        public int ApplicationId { get; set; }
+        public string SenderId { get; set; } = string.Empty;
+        public string SenderName { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
+    }
+
+    public class SendApplicationChatMessageDto
+    {
+        public string Message { get; set; } = string.Empty;
+    }
 }

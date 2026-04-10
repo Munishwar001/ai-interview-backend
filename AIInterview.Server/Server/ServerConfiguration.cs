@@ -71,6 +71,7 @@ namespace AIInterview.Server
 
             app.MapControllers();
             app.MapHub<InterviewHub>("/hubs/interview");
+            app.MapHub<ApplicationChatHub>("/hubs/application-chat");
 
             using var scope = app.Services.CreateScope();
             var services = scope.ServiceProvider;

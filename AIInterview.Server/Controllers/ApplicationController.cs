@@ -100,6 +100,51 @@ namespace AIInterview.Server.Controllers
             catch (Exception ex) { return CustomProblem500(ex.Message, ex); }
         }
 
+        /// <summary>Get chat rooms for current user where application status is Shortlisted or Hired.</summary>
+        [HttpGet("chat/rooms")]
+        public async Task<IActionResult> GetChatRooms()
+        {
+            try
+            {
+                var rooms = await _repo.GetChatRoomsAsync(CurrentUserID);
+                return Ok(rooms);
+            }
+            catch (Exception ex) { return CustomProblem500(ex.Message, ex); }
+        }
+
+        /// <summary>Get chat messages for a specific application if current user can access it.</summary>
+        [HttpGet("{applicationId}/chat/messages")]
+        public async Task<IActionResult> GetChatMessages(int applicationId)
+        {
+            try
+            {
+                var canAccess = await _repo.CanAccessApplicationChatAsync(applicationId, CurrentUserID);
+                if (!canAccess) return CustomUnauthorized401("You are not allowed to access this chat.");
+
+                var messages = await _repo.GetChatMessagesAsync(applicationId, CurrentUserID);
+                return Ok(messages);
+            }
+            catch (Exception ex) { return CustomProblem500(ex.Message, ex); }
+        }
+
+        /// <summary>Send a chat message for a shortlisted/hired application conversation.</summary>
+        [HttpPost("{applicationId}/chat/messages")]
+        public async Task<IActionResult> SendChatMessage(int applicationId, [FromBody] SendApplicationChatMessageDto request)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(request.Message))
+                    return CustomProblem400("Message is required.");
+
+                var created = await _repo.AddChatMessageAsync(applicationId, CurrentUserID, request.Message);
+                if (created == null)
+                    return CustomUnauthorized401("You are not allowed to send messages in this chat.");
+
+                return Ok(created);
+            }
+            catch (Exception ex) { return CustomProblem500(ex.Message, ex); }
+        }
+
         /// <summary>Withdraw an application.</summary>
         [HttpDelete("{applicationId}")]
         public async Task<IActionResult> Withdraw(int applicationId)
