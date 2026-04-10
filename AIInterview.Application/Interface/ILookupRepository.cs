@@ -6,5 +6,6 @@ namespace AIInterview.Application.Interface
     {
         Task<IEnumerable<dynamic>> GetJobTypesAsync();
         Task<IEnumerable<LookupDto>> GetSkillsAsync();
+        Task<IEnumerable<LookupDto>> GetCompanySizesAsync();
     }
 }

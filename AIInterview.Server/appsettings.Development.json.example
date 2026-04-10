@@ -1,0 +1,33 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "ConnectionStrings": {
+    "Default": "Host=localhost;Port=5432;Database=AI_Db;Username=postgres;Password=YOUR_DB_PASSWORD"
+  },
+  "Cors": {
+    "AllowedOrigins": [
+      "http://localhost:4200"
+    ]
+  },
+  "Jwt": {
+    "SecretKey": "YOUR_JWT_SECRET_MIN_32_CHARS",
+    "Issuer": "YOUR_ISSUER",
+    "Audience": "YOUR_AUDIENCE",
+    "AccessTokenExpiration": "60",
+    "RefreshTokenExpiration": "10080"
+  },
+  "Google": {
+    "ClientId": "YOUR_GOOGLE_CLIENT_ID"
+  },
+  "Gemini": {
+    "ApiKey": "YOUR_GEMINI_API_KEY"
+  },
+  "Groq": {
+    "ApiKey": "YOUR_GROQ_API_KEY"
+  },
+  "AllowedHosts": "*"
+}

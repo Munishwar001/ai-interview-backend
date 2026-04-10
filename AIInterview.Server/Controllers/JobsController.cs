@@ -1,13 +1,15 @@
 ﻿using AIInterview.Application.Interface;
 using AIInterview.Application.Services;
 using AIInterview.Core.DTOs.Job;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AIInterview.Server.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class JobsController :BaseController
+    [Authorize]
+    public class JobsController : BaseController
     {
         private readonly JobService _jobService;
 
@@ -16,38 +18,100 @@ namespace AIInterview.Server.Controllers
             _jobService = jobService;
         }
 
+        #region My Jobs
+
+        [HttpGet("my-jobs")]
+        public async Task<IActionResult> GetMyJobs()
+        {
+            try
+            {
+                var result = await _jobService.GetMyJobsAsync(CurrentUserID);
+                return Ok(result);
+            }
+            catch (Exception ex) { return CustomProblem500(ex.Message); }
+        }
+
         [HttpPost]
         public async Task<IActionResult> CreateJob([FromBody] CreateJobDto request)
         {
-            request.EmployerId = CurrentUserID;
-            var jobId = await _jobService.CreateJobAsync(request);
-            return Ok(new { jobId });
+            try
+            {
+                request.EmployerId = CurrentUserID;
+                var jobId = await _jobService.CreateJobAsync(request);
+                return Ok(new { jobId });
+            }
+            catch (Exception ex) { return CustomProblem500(ex.Message); }
         }
 
-        //[HttpGet]
-        //public async Task<IActionResult> GetAllJobs()
-        //{
-        //    return Ok(await _jobService.GetAllJobsAsync());
-        //}
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateJob(int id, [FromBody] UpdateJobDto request)
+        {
+            try
+            {
+                var success = await _jobService.UpdateJobAsync(id, CurrentUserID, request);
+                if (!success) return CustomProblem400("Job not found or unauthorized.");
+                return Ok(new { success });
+            }
+            catch (Exception ex) { return CustomProblem500(ex.Message); }
+        }
 
-        //[HttpGet("{id}")]
-        //public async Task<IActionResult> GetJob(int id)
-        //{
-        //    var job = await _jobService.GetJobByIdAsync(id);
-        //    if (job == null) return NotFound();
-        //    return Ok(job);
-        //}
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteJob(int id)
+        {
+            try
+            {
+                var success = await _jobService.DeleteJobAsync(id, CurrentUserID);
+                if (!success) return CustomProblem400("Job not found or unauthorized.");
+                return Ok(new { success });
+            }
+            catch (Exception ex) { return CustomProblem500(ex.Message); }
+        }
 
-        //[HttpGet("my-jobs/{employerId}")]
-        //public async Task<IActionResult> GetMyJobs(string employerId)
-        //{
-        //    return Ok(await _jobService.GetJobsByEmployerAsync(employerId));
-        //}
+        [HttpPatch("{id}/close")]
+        public async Task<IActionResult> CloseJob(int id)
+        {
+            try
+            {
+                var success = await _jobService.CloseJobAsync(id, CurrentUserID);
+                if (!success) return CustomProblem400("Job not found or unauthorized.");
+                return Ok(new { success });
+            }
+            catch (Exception ex) { return CustomProblem500(ex.Message); }
+        }
+
+        [HttpPatch("{id}/reopen")]
+        public async Task<IActionResult> ReopenJob(int id)
+        {
+            try
+            {
+                var success = await _jobService.ReopenJobAsync(id, CurrentUserID);
+                if (!success) return CustomProblem400("Job not found or unauthorized.");
+                return Ok(new { success });
+            }
+            catch (Exception ex) { return CustomProblem500(ex.Message); }
+        }
+
+        [HttpGet("{id}/applicants")]
+        public async Task<IActionResult> GetApplicants(int id)
+        {
+            try
+            {
+                var result = await _jobService.GetJobApplicantsAsync(id, CurrentUserID);
+                return Ok(result);
+            }
+            catch (Exception ex) { return CustomProblem500(ex.Message); }
+        }
+
+        #endregion
+
+        #region AI
 
         [HttpPost("generate-description")]
         public async Task<IActionResult> GenerateDescription([FromBody] GenerateDescriptionDto request, [FromServices] IAiService aiService)
         {
-            var prompt = $@"
+            try
+            {
+                var prompt = $@"
                     Generate a professional job description.
 
                     Role: {request.Title}
@@ -59,9 +123,12 @@ namespace AIInterview.Server.Controllers
                     - Keep it under 150 words
                     ";
 
-            var result = await aiService.GenerateJobDescription(prompt);
-
-            return Ok(new { description = result });
+                var result = await aiService.GenerateJobDescription(prompt);
+                return Ok(new { description = result });
+            }
+            catch (Exception ex) { return CustomProblem500(ex.Message); }
         }
+
+        #endregion
     }
 }

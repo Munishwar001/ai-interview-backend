@@ -14,6 +14,7 @@ namespace AIInterview.Application.Services
         private readonly IEncryptionService _encryptionService;
         private readonly IUserRepository _userRepository;
         private readonly JwtConfig _jwtConfig;
+
         public JwtAuthManager(
             IEncryptionService encryptionService,
             IUserRepository userRepository,
@@ -23,6 +24,9 @@ namespace AIInterview.Application.Services
             _userRepository = userRepository;
             _jwtConfig = jwtOptions.Value;
         }
+
+        #region Token Generation
+
         public async Task<JwtAuthResult> GenerateTokens(string userId, string email, string? oldRefreshToken = null)
         {
             try
@@ -33,17 +37,14 @@ namespace AIInterview.Application.Services
                     new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                     new(ClaimTypes.Email, _encryptionService.Encrypt(email)),
                 };
+
                 var userRoles = await _userRepository.GetUserRoles(userId);
-
-                List<Claim> roleClaims = [];
-
                 foreach (var userRole in userRoles)
-                {
-                    roleClaims.Add(new Claim(ClaimTypes.Role, _encryptionService.Encrypt(userRole.RoleName)));
-                }
-                claims.AddRange(roleClaims);
+                    claims.Add(new Claim(ClaimTypes.Role, _encryptionService.Encrypt(userRole.RoleName)));
 
-                var signinCredentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtConfig.SecretKey)), SecurityAlgorithms.HmacSha256);
+                var signinCredentials = new SigningCredentials(
+                    new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtConfig.SecretKey)),
+                    SecurityAlgorithms.HmacSha256);
 
                 var expiration = DateTime.UtcNow.AddMinutes(_jwtConfig.AccessTokenExpiration);
 
@@ -52,10 +53,9 @@ namespace AIInterview.Application.Services
                     audience: _jwtConfig.Audience,
                     claims: claims,
                     expires: expiration,
-                    signingCredentials: signinCredentials
-                );
-                var tokenString = new JwtSecurityTokenHandler().WriteToken(jwtToken);
+                    signingCredentials: signinCredentials);
 
+                var tokenString = new JwtSecurityTokenHandler().WriteToken(jwtToken);
                 var refreshToken = await GenerateRefreshToken(userId, oldRefreshToken);
 
                 return new JwtAuthResult
@@ -65,10 +65,7 @@ namespace AIInterview.Application.Services
                     RefreshToken = refreshToken
                 };
             }
-            catch (Exception ex)
-            {
-                throw;
-            }
+            catch (Exception) { throw; }
         }
 
         private async Task<string> GenerateRefreshToken(string userId, string oldRefreshToken)
@@ -76,16 +73,18 @@ namespace AIInterview.Application.Services
             try
             {
                 string newRefreshToken = _encryptionService.GenerateRandomToken();
-                // Add new and delete the old refresh token for the user
-                await _userRepository.AddNewDeleteOldUserRefreshToken(userId, newRefreshToken, oldRefreshToken, DateTime.UtcNow, DateTime.UtcNow.AddMinutes(_jwtConfig.RefreshTokenExpiration));
+                await _userRepository.AddNewDeleteOldUserRefreshToken(
+                    userId, newRefreshToken, oldRefreshToken,
+                    DateTime.UtcNow, DateTime.UtcNow.AddMinutes(_jwtConfig.RefreshTokenExpiration));
 
                 return newRefreshToken;
             }
-            catch (Exception ex)
-            {
-                throw;
-            }
+            catch (Exception) { throw; }
         }
+
+        #endregion
+
+        #region Token Validation
 
         public string? GetUserIdFromAccessToken(string accessToken)
         {
@@ -99,68 +98,48 @@ namespace AIInterview.Application.Services
                     ValidIssuer = _jwtConfig.Issuer,
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtConfig.SecretKey)),
-                    ValidateLifetime = false // Do not validate lifetime here
+                    ValidateLifetime = false
                 };
 
                 var tokenHandler = new JwtSecurityTokenHandler();
                 var principal = tokenHandler.ValidateToken(accessToken, tokenValidationParameters, out SecurityToken securityToken);
-                JwtSecurityToken? jwtSecurityToken = securityToken as JwtSecurityToken;
-                if (jwtSecurityToken is null || !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
-                {
+                var jwtSecurityToken = securityToken as JwtSecurityToken;
+
+                if (jwtSecurityToken is null || !jwtSecurityToken.Header.Alg.Equals(
+                    SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
                     return null;
-                }
 
                 string? userId = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-                if (string.IsNullOrEmpty(userId))
-                {
-                    return null;
-                }
+                if (string.IsNullOrEmpty(userId)) return null;
 
                 return _encryptionService.Decrypt(userId);
             }
-            catch (Exception ex)
-            {
-                throw;
-            }
+            catch (Exception) { throw; }
         }
 
         public async Task<bool> ValidateRefreshToken(string userId, string refreshToken)
         {
             try
             {
-                UserRefreshToken storedRefreshToken = await _userRepository.GetRefreshToken(userId, refreshToken);
-                if (storedRefreshToken == null)
-                {
-                    return false;
-                }
+                var storedRefreshToken = await _userRepository.GetRefreshToken(userId, refreshToken);
+                if (storedRefreshToken == null) return false;
 
-
-                // Ensure that the refresh token that we got from storage is not yet expired.
                 if (DateTime.UtcNow > storedRefreshToken.ExpiresAt)
                 {
-                    // Delete from db if expired
                     await _userRepository.DeleteUserRefreshToken(userId, refreshToken);
                     return false;
                 }
                 return true;
             }
-            catch (Exception ex)
-            {
-                throw;
-            }
+            catch (Exception) { throw; }
         }
 
         public async Task<bool> RevokeRefreshToken(string userId, string refreshToken)
         {
-            try
-            {
-                return await _userRepository.DeleteUserRefreshToken(userId, refreshToken);
-            }
-            catch (Exception ex)
-            {
-                throw;
-            }
+            try { return await _userRepository.DeleteUserRefreshToken(userId, refreshToken); }
+            catch (Exception) { throw; }
         }
+
+        #endregion
     }
 }

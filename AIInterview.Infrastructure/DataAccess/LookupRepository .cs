@@ -16,14 +16,41 @@ namespace AIInterview.Infrastructure.DataAccess
 
         public async Task<IEnumerable<dynamic>> GetJobTypesAsync()
         {
-            var query = @"SELECT id, name FROM job_types ORDER BY id";
-            return await _db.QueryAsync(query);
+            try
+            {
+                var query = @"SELECT id, name FROM job_types ORDER BY id";
+                return await _db.QueryAsync(query);
+            }
+            catch (Exception)
+            {
+                throw;
+            }
         }
 
         public async Task<IEnumerable<LookupDto>> GetSkillsAsync()
         {
-            var query = "SELECT Id, Name FROM Skills";
-            return await _db.QueryAsync<LookupDto>(query);
+            try
+            {
+                var query = "SELECT Id, Name FROM Skills";
+                return await _db.QueryAsync<LookupDto>(query);
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+
+        public async Task<IEnumerable<LookupDto>> GetCompanySizesAsync()
+        {
+            try
+            {
+                var query = "SELECT id, label AS Name FROM company_sizes ORDER BY id";
+                return await _db.QueryAsync<LookupDto>(query);
+            }
+            catch (Exception)
+            {
+                throw;
+            }
         }
 
     }
