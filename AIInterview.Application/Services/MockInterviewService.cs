@@ -1,5 +1,6 @@
 using AIInterview.Application.Interface;
 using AIInterview.Core.DTOs.MockInterview;
+using Microsoft.Extensions.Logging;
 
 namespace AIInterview.Application.Services
 {
@@ -8,21 +9,20 @@ namespace AIInterview.Application.Services
         private readonly IMockInterviewRepository _repo;
         private readonly IAiService _aiService;
         private readonly IUserSkillRepository _skillRepo;
+        private readonly ILogger<MockInterviewService> _logger;
 
         public MockInterviewService(
             IMockInterviewRepository repo,
             IAiService aiService,
-            IUserSkillRepository skillRepo)
+            IUserSkillRepository skillRepo,
+            ILogger<MockInterviewService> logger)
         {
-            _repo = repo;
+            _repo      = repo;
             _aiService = aiService;
             _skillRepo = skillRepo;
+            _logger    = logger;
         }
 
-        /// <summary>
-        /// Starts a new interview session. If no skills are provided, loads them from the user's profile.
-        /// Returns the session ID and the AI's first question.
-        /// </summary>
         public async Task<StartInterviewResultDto> StartSessionAsync(string userId, List<string>? providedSkills)
         {
             var skills = providedSkills?.Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
@@ -36,24 +36,22 @@ namespace AIInterview.Application.Services
             if (skills.Count == 0)
                 throw new InvalidOperationException("No skills found. Please add skills to your profile or provide them manually.");
 
-            var sessionId = await _repo.CreateSessionAsync(userId, skills);
+            _logger.LogInformation("Starting mock interview session for user {UserId} with skills: {Skills}", userId, string.Join(", ", skills));
 
-            // Ask AI for the first question (no history yet)
+            var sessionId     = await _repo.CreateSessionAsync(userId, skills);
             var firstQuestion = await _aiService.ConductInterview(skills, [], null);
-
             await _repo.AddMessageAsync(sessionId, "ai", firstQuestion);
+
+            _logger.LogInformation("Mock interview session {SessionId} created for user {UserId}", sessionId, userId);
 
             return new StartInterviewResultDto
             {
-                SessionId = sessionId,
-                Skills = skills,
+                SessionId     = sessionId,
+                Skills        = skills,
                 FirstQuestion = firstQuestion
             };
         }
 
-        /// <summary>
-        /// Processes a user's answer and returns the AI's next question or final feedback.
-        /// </summary>
         public async Task<InterviewTurnResultDto> SendMessageAsync(string userId, Guid sessionId, string userMessage)
         {
             var session = await _repo.GetSessionAsync(sessionId, userId)
@@ -62,10 +60,8 @@ namespace AIInterview.Application.Services
             if (session.Status == "completed")
                 throw new InvalidOperationException("This interview session has already been completed.");
 
-            // Save user message
             await _repo.AddMessageAsync(sessionId, "user", userMessage);
 
-            // Build history for AI (all messages so far including the new user message)
             var history = session.Messages
                 .Select(m => (m.Role, m.Content))
                 .ToList();
@@ -73,18 +69,21 @@ namespace AIInterview.Application.Services
 
             var aiResponse = await _aiService.ConductInterview(session.Skills, history, null);
 
-            bool isCompleted = aiResponse.Contains("[INTERVIEW_COMPLETE]", StringComparison.OrdinalIgnoreCase);
+            bool isCompleted   = aiResponse.Contains("[INTERVIEW_COMPLETE]", StringComparison.OrdinalIgnoreCase);
             string cleanResponse = aiResponse.Replace("[INTERVIEW_COMPLETE]", "").Trim();
 
             await _repo.AddMessageAsync(sessionId, "ai", cleanResponse);
 
             if (isCompleted)
+            {
                 await _repo.CompleteSessionAsync(sessionId, userId);
+                _logger.LogInformation("Mock interview session {SessionId} completed for user {UserId}", sessionId, userId);
+            }
 
             return new InterviewTurnResultDto
             {
-                AiMessage = cleanResponse,
-                IsCompleted = isCompleted,
+                AiMessage       = cleanResponse,
+                IsCompleted     = isCompleted,
                 FeedbackSummary = isCompleted ? cleanResponse : null
             };
         }

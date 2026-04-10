@@ -96,12 +96,13 @@ namespace AIInterview.Server.Controllers
                 detail: detailMessage
             );
 
-            // Optional: expose exception details only in development
-            var env = HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
-            if (env.IsDevelopment() && exception != null)
+            if (exception != null)
             {
-                problemDetails.Extensions["exception"] = exception.Message;
-                problemDetails.Extensions["stackTrace"] = exception.StackTrace;
+                problemDetails.Extensions["errorMessage"] = exception.Message;
+
+                var env = HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
+                if (env.IsDevelopment())
+                    problemDetails.Extensions["stackTrace"] = exception.StackTrace;
             }
 
             return new ObjectResult(problemDetails)

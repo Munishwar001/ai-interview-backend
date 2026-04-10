@@ -11,31 +11,32 @@ namespace AIInterview.Server.Controllers
     public class MockInterviewController : BaseController
     {
         private readonly MockInterviewService _service;
+        private readonly ILogger<MockInterviewController> _logger;
 
-        public MockInterviewController(MockInterviewService service)
+        public MockInterviewController(MockInterviewService service, ILogger<MockInterviewController> logger)
         {
             _service = service;
+            _logger  = logger;
         }
 
-        /// <summary>
-        /// Start a new mock interview session.
-        /// Skills are loaded from the user's profile if not provided.
-        /// </summary>
         [HttpPost("start")]
         public async Task<IActionResult> Start([FromBody] StartInterviewDto request)
         {
             try
             {
+                _logger.LogInformation("MockInterview Start for user {UserId}", CurrentUserID);
                 var result = await _service.StartSessionAsync(CurrentUserID, request.Skills);
+                _logger.LogInformation("MockInterview session {SessionId} started for user {UserId}", result.SessionId, CurrentUserID);
                 return Ok(result);
             }
             catch (InvalidOperationException ex) { return CustomProblem400(ex.Message); }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "MockInterview Start failed for user {UserId}", CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
-        /// <summary>
-        /// Send a user answer and receive the next AI question or final feedback.
-        /// </summary>
         [HttpPost("message")]
         public async Task<IActionResult> SendMessage([FromBody] SendMessageDto request)
         {
@@ -48,12 +49,13 @@ namespace AIInterview.Server.Controllers
                 return Ok(result);
             }
             catch (InvalidOperationException ex) { return CustomProblem400(ex.Message); }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "MockInterview SendMessage failed for user {UserId}, session {SessionId}", CurrentUserID, request.SessionId);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
-        /// <summary>
-        /// Get all messages for a specific session.
-        /// </summary>
         [HttpGet("session/{sessionId}")]
         public async Task<IActionResult> GetSession(Guid sessionId)
         {
@@ -63,12 +65,13 @@ namespace AIInterview.Server.Controllers
                 if (session == null) return CustomProblem400("Session not found.");
                 return Ok(session);
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetSession failed for user {UserId}, session {SessionId}", CurrentUserID, sessionId);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
-        /// <summary>
-        /// Get all interview sessions for the current user.
-        /// </summary>
         [HttpGet("sessions")]
         public async Task<IActionResult> GetSessions()
         {
@@ -77,7 +80,11 @@ namespace AIInterview.Server.Controllers
                 var sessions = await _service.GetSessionsAsync(CurrentUserID);
                 return Ok(sessions);
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetSessions failed for user {UserId}", CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
     }
 }

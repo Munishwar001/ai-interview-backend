@@ -1,4 +1,4 @@
-﻿using AIInterview.Application.Services;
+using AIInterview.Application.Services;
 using AIInterview.Core.Constants;
 using AIInterview.Core.DTOs.User;
 using AIInterview.Infrastructure.Models;
@@ -42,7 +42,7 @@ namespace AIInterview.Server.Controllers
             }
             catch (Exception ex)
             {
-                return CustomProblem500(ex.Message);
+                return CustomProblem500(ex.Message, ex);
             }
         }
     }

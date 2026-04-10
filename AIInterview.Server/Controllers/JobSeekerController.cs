@@ -12,11 +12,13 @@ namespace AIInterview.Server.Controllers
     {
         private readonly JobSeekerService _jobSeekerService;
         private readonly IWebHostEnvironment _env;
+        private readonly ILogger<JobSeekerController> _logger;
 
-        public JobSeekerController(JobSeekerService jobSeekerService, IWebHostEnvironment env)
+        public JobSeekerController(JobSeekerService jobSeekerService, IWebHostEnvironment env, ILogger<JobSeekerController> logger)
         {
             _jobSeekerService = jobSeekerService;
-            _env = env;
+            _env              = env;
+            _logger           = logger;
         }
 
         #region Profile
@@ -29,7 +31,11 @@ namespace AIInterview.Server.Controllers
                 var result = await _jobSeekerService.GetProfileAsync(CurrentUserID);
                 return Ok(result);
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetProfile failed for user {UserId}", CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
         [HttpPut("profile")]
@@ -39,9 +45,14 @@ namespace AIInterview.Server.Controllers
             {
                 request.UserId = CurrentUserID;
                 var success = await _jobSeekerService.UpsertProfileAsync(request);
+                _logger.LogInformation("Profile upserted for user {UserId}", CurrentUserID);
                 return Ok(new { success });
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "UpsertProfile failed for user {UserId}", CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
         [HttpPost("upload-avatar")]
@@ -75,10 +86,15 @@ namespace AIInterview.Server.Controllers
 
                 var relativePath = $"/uploads/avatars/{fileName}";
                 var success = await _jobSeekerService.UpdateAvatarAsync(CurrentUserID, relativePath);
+                _logger.LogInformation("Avatar uploaded for user {UserId}: {Path}", CurrentUserID, relativePath);
 
                 return Ok(new { success, avatarPath = relativePath });
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "UploadAvatar failed for user {UserId}", CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
         [HttpDelete("delete-avatar")]
@@ -89,9 +105,14 @@ namespace AIInterview.Server.Controllers
                 var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
                 var success = await _jobSeekerService.DeleteAvatarAsync(CurrentUserID, webRoot);
                 if (!success) return CustomProblem400("No avatar found to delete.");
+                _logger.LogInformation("Avatar deleted for user {UserId}", CurrentUserID);
                 return Ok(new { success });
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "DeleteAvatar failed for user {UserId}", CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
         [HttpGet("resume-status")]
@@ -99,17 +120,20 @@ namespace AIInterview.Server.Controllers
         {
             try
             {
-                var profile = await _jobSeekerService.GetProfileAsync(CurrentUserID);
+                var profile    = await _jobSeekerService.GetProfileAsync(CurrentUserID);
                 var isUploaded = profile != null && !string.IsNullOrEmpty(profile.ResumeFilePath);
-
                 return Ok(new
                 {
                     isUploaded,
                     fileName = isUploaded ? profile!.ResumeFileName : null,
-                    filePath = isUploaded ? profile!.ResumeFilePath : null
+                    filePath = isUploaded ? profile!.ResumeFilePath  : null
                 });
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetResumeStatus failed for user {UserId}", CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
         [HttpPost("upload-resume")]
@@ -143,10 +167,15 @@ namespace AIInterview.Server.Controllers
 
                 var relativePath = $"/uploads/resumes/{fileName}";
                 var success = await _jobSeekerService.UpdateResumeAsync(CurrentUserID, resume.FileName, relativePath);
+                _logger.LogInformation("Resume uploaded for user {UserId}: {FileName}", CurrentUserID, resume.FileName);
 
                 return Ok(new { success, fileName = resume.FileName, filePath = relativePath });
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "UploadResume failed for user {UserId}", CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
         [HttpDelete("delete-resume")]
@@ -157,9 +186,14 @@ namespace AIInterview.Server.Controllers
                 var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
                 var success = await _jobSeekerService.DeleteResumeAsync(CurrentUserID, webRoot);
                 if (!success) return CustomProblem400("No resume found to delete.");
+                _logger.LogInformation("Resume deleted for user {UserId}", CurrentUserID);
                 return Ok(new { success });
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "DeleteResume failed for user {UserId}", CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
         [HttpGet("download-resume")]
@@ -177,7 +211,10 @@ namespace AIInterview.Server.Controllers
                     profile.ResumeFilePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
 
                 if (!System.IO.File.Exists(absolutePath))
+                {
+                    _logger.LogWarning("Resume file missing on disk for user {UserId}: {Path}", CurrentUserID, absolutePath);
                     return CustomProblem400("Resume file not found on server.");
+                }
 
                 var ext = Path.GetExtension(absolutePath).ToLowerInvariant();
                 var contentType = ext switch
@@ -188,14 +225,18 @@ namespace AIInterview.Server.Controllers
                     _       => "application/octet-stream"
                 };
 
-                var fileBytes = await System.IO.File.ReadAllBytesAsync(absolutePath);
+                var fileBytes    = await System.IO.File.ReadAllBytesAsync(absolutePath);
                 var downloadName = string.IsNullOrEmpty(profile.ResumeFileName)
                     ? Path.GetFileName(absolutePath)
                     : profile.ResumeFileName;
 
                 return File(fileBytes, contentType, downloadName);
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "DownloadResume failed for user {UserId}", CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
         #endregion
@@ -210,7 +251,11 @@ namespace AIInterview.Server.Controllers
                 var result = await _jobSeekerService.GetExperiencesAsync(CurrentUserID);
                 return Ok(result);
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetExperiences failed for user {UserId}", CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
         [HttpPost("experience")]
@@ -222,7 +267,11 @@ namespace AIInterview.Server.Controllers
                 var id = await _jobSeekerService.AddExperienceAsync(request);
                 return Ok(new { id });
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "AddExperience failed for user {UserId}", CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
         [HttpPut("experience/{id}")]
@@ -234,7 +283,11 @@ namespace AIInterview.Server.Controllers
                 if (!success) return CustomProblem400("Experience not found or unauthorized.");
                 return Ok(new { success });
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "UpdateExperience failed for id {Id}, user {UserId}", id, CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
         [HttpDelete("experience/{id}")]
@@ -246,7 +299,11 @@ namespace AIInterview.Server.Controllers
                 if (!success) return CustomProblem400("Experience not found or unauthorized.");
                 return Ok(new { success });
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "DeleteExperience failed for id {Id}, user {UserId}", id, CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
         #endregion
@@ -261,7 +318,11 @@ namespace AIInterview.Server.Controllers
                 var result = await _jobSeekerService.GetEducationAsync(CurrentUserID);
                 return Ok(result);
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetEducation failed for user {UserId}", CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
         [HttpPost("education")]
@@ -273,7 +334,11 @@ namespace AIInterview.Server.Controllers
                 var id = await _jobSeekerService.AddEducationAsync(request);
                 return Ok(new { id });
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "AddEducation failed for user {UserId}", CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
         [HttpPut("education/{id}")]
@@ -285,7 +350,11 @@ namespace AIInterview.Server.Controllers
                 if (!success) return CustomProblem400("Education not found or unauthorized.");
                 return Ok(new { success });
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "UpdateEducation failed for id {Id}, user {UserId}", id, CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
         [HttpDelete("education/{id}")]
@@ -297,7 +366,11 @@ namespace AIInterview.Server.Controllers
                 if (!success) return CustomProblem400("Education not found or unauthorized.");
                 return Ok(new { success });
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "DeleteEducation failed for id {Id}, user {UserId}", id, CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
         #endregion
@@ -312,7 +385,11 @@ namespace AIInterview.Server.Controllers
                 var result = await _jobSeekerService.GetSkillsAsync(CurrentUserID);
                 return Ok(result);
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetSkills failed for user {UserId}", CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
         [HttpPut("skills")]
@@ -323,7 +400,11 @@ namespace AIInterview.Server.Controllers
                 await _jobSeekerService.SyncSkillsAsync(CurrentUserID, request.SkillIds);
                 return Ok(new { success = true });
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "SyncSkills failed for user {UserId}", CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
         #endregion

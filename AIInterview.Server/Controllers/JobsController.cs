@@ -1,4 +1,4 @@
-﻿using AIInterview.Application.Interface;
+using AIInterview.Application.Interface;
 using AIInterview.Application.Services;
 using AIInterview.Core.DTOs.Job;
 using Microsoft.AspNetCore.Authorization;
@@ -12,10 +12,12 @@ namespace AIInterview.Server.Controllers
     public class JobsController : BaseController
     {
         private readonly JobService _jobService;
+        private readonly ILogger<JobsController> _logger;
 
-        public JobsController(JobService jobService)
+        public JobsController(JobService jobService, ILogger<JobsController> logger)
         {
             _jobService = jobService;
+            _logger = logger;
         }
 
         #region My Jobs
@@ -25,10 +27,16 @@ namespace AIInterview.Server.Controllers
         {
             try
             {
+                _logger.LogInformation("GetMyJobs called by user {UserId}", CurrentUserID);
                 var result = await _jobService.GetMyJobsAsync(CurrentUserID);
+                _logger.LogInformation("GetMyJobs returned {Count} jobs for user {UserId}", result.Count(), CurrentUserID);
                 return Ok(result);
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetMyJobs failed for user {UserId}", CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
         [HttpPost]
@@ -38,9 +46,14 @@ namespace AIInterview.Server.Controllers
             {
                 request.EmployerId = CurrentUserID;
                 var jobId = await _jobService.CreateJobAsync(request);
+                _logger.LogInformation("Job {JobId} created by user {UserId}", jobId, CurrentUserID);
                 return Ok(new { jobId });
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "CreateJob failed for user {UserId}", CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
         [HttpPut("{id}")]
@@ -52,7 +65,11 @@ namespace AIInterview.Server.Controllers
                 if (!success) return CustomProblem400("Job not found or unauthorized.");
                 return Ok(new { success });
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "UpdateJob failed for job {JobId}, user {UserId}", id, CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
         [HttpDelete("{id}")]
@@ -64,7 +81,11 @@ namespace AIInterview.Server.Controllers
                 if (!success) return CustomProblem400("Job not found or unauthorized.");
                 return Ok(new { success });
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "DeleteJob failed for job {JobId}, user {UserId}", id, CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
         [HttpPatch("{id}/close")]
@@ -76,7 +97,11 @@ namespace AIInterview.Server.Controllers
                 if (!success) return CustomProblem400("Job not found or unauthorized.");
                 return Ok(new { success });
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "CloseJob failed for job {JobId}, user {UserId}", id, CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
         [HttpPatch("{id}/reopen")]
@@ -88,7 +113,11 @@ namespace AIInterview.Server.Controllers
                 if (!success) return CustomProblem400("Job not found or unauthorized.");
                 return Ok(new { success });
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "ReopenJob failed for job {JobId}, user {UserId}", id, CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
         [HttpGet("{id}/applicants")]
@@ -99,7 +128,11 @@ namespace AIInterview.Server.Controllers
                 var result = await _jobService.GetJobApplicantsAsync(id, CurrentUserID);
                 return Ok(result);
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetApplicants failed for job {JobId}, user {UserId}", id, CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
         #endregion
@@ -126,7 +159,11 @@ namespace AIInterview.Server.Controllers
                 var result = await aiService.GenerateJobDescription(prompt);
                 return Ok(new { description = result });
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GenerateDescription failed for user {UserId}", CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
         #endregion
