@@ -29,10 +29,10 @@ namespace AIInterview.Server.Hubs
 
             var group = GroupName(interviewId);
             await Groups.AddToGroupAsync(Context.ConnectionId, group);
+
+            // Notify others that someone joined
             await Clients.OthersInGroup(group).SendAsync("ParticipantJoined", userId);
-              // Notify others that someone joined
-             await Clients.OthersInGroup(group).SendAsync("ParticipantJoined", userId);
-    
+
             // Confirm to the caller they joined successfully
             await Clients.Caller.SendAsync("JoinedInterview", interviewId);
         }
