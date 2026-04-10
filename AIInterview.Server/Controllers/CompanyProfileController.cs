@@ -1,4 +1,4 @@
-﻿using AIInterview.Application.Interface;
+using AIInterview.Application.Interface;
 using AIInterview.Application.Services;
 using AIInterview.Core.DTOs.Company;
 using Microsoft.AspNetCore.Authorization;
@@ -13,11 +13,13 @@ namespace AIInterview.Server.Controllers
     {
         private readonly CompanyService _companyService;
         private readonly IWebHostEnvironment _env;
+        private readonly ILogger<CompanyProfileController> _logger;
 
-        public CompanyProfileController(CompanyService companyService, IWebHostEnvironment env)
+        public CompanyProfileController(CompanyService companyService, IWebHostEnvironment env, ILogger<CompanyProfileController> logger)
         {
             _companyService = companyService;
-            _env = env;
+            _env            = env;
+            _logger         = logger;
         }
 
         #region Profile
@@ -30,7 +32,11 @@ namespace AIInterview.Server.Controllers
                 var result = await _companyService.GetByUserIdAsync(CurrentUserID);
                 return Ok(result);
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetMyCompanyProfile failed for user {UserId}", CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
         [HttpPut]
@@ -40,9 +46,14 @@ namespace AIInterview.Server.Controllers
             {
                 request.UserId = CurrentUserID;
                 var result = await _companyService.UpsertAsync(request);
+                _logger.LogInformation("Company profile upserted for user {UserId}", CurrentUserID);
                 return Ok(result);
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "UpsertCompanyProfile failed for user {UserId}", CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
         #endregion
@@ -72,7 +83,11 @@ namespace AIInterview.Server.Controllers
                 var result = await aiService.GenerateJobDescription(prompt);
                 return Ok(new { description = result });
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GenerateDescription (company) failed for user {UserId}", CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
         #endregion
@@ -93,14 +108,19 @@ namespace AIInterview.Server.Controllers
                     "uploads", "company");
                 Directory.CreateDirectory(uploadsFolder);
 
-                string? logoUrl = logo != null ? await SaveFileAsync(logo, uploadsFolder, "logo") : null;
-                string? coverUrl = coverImage != null ? await SaveFileAsync(coverImage, uploadsFolder, "cover") : null;
+                string? logoUrl  = logo        != null ? await SaveFileAsync(logo,        uploadsFolder, "logo")  : null;
+                string? coverUrl = coverImage  != null ? await SaveFileAsync(coverImage,  uploadsFolder, "cover") : null;
 
                 var result = await _companyService.UpdateImagesAsync(CurrentUserID, logoUrl, coverUrl);
+                _logger.LogInformation("Company images uploaded for user {UserId}", CurrentUserID);
                 return Ok(result);
             }
             catch (InvalidOperationException ex) { return CustomProblem400(ex.Message); }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "UploadImages failed for user {UserId}", CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
         private async Task<string> SaveFileAsync(IFormFile file, string folder, string prefix)

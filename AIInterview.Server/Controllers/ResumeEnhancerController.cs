@@ -11,14 +11,15 @@ namespace AIInterview.Server.Controllers
     {
         private readonly ResumeEnhancerService _service;
         private readonly IWebHostEnvironment _env;
+        private readonly ILogger<ResumeEnhancerController> _logger;
 
-        public ResumeEnhancerController(ResumeEnhancerService service, IWebHostEnvironment env)
+        public ResumeEnhancerController(ResumeEnhancerService service, IWebHostEnvironment env, ILogger<ResumeEnhancerController> logger)
         {
             _service = service;
             _env     = env;
+            _logger  = logger;
         }
 
-        // Analyze resume uploaded directly
         [HttpPost("analyze")]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> Analyze(IFormFile resume)
@@ -37,29 +38,37 @@ namespace AIInterview.Server.Controllers
                 if (resume.Length > 5 * 1024 * 1024)
                     return CustomProblem400("File size must not exceed 5MB.");
 
+                _logger.LogInformation("Resume analyze started for user {UserId}, file: {FileName}", CurrentUserID, resume.FileName);
                 using var stream = resume.OpenReadStream();
                 var result = await _service.AnalyzeAsync(CurrentUserID, stream, resume.FileName);
                 return Ok(result);
             }
             catch (InvalidOperationException ex) { return CustomProblem400(ex.Message); }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Analyze failed for user {UserId}", CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
-        // Analyze resume already uploaded to profile
         [HttpPost("analyze-from-profile")]
         public async Task<IActionResult> AnalyzeFromProfile()
         {
             try
             {
+                _logger.LogInformation("AnalyzeFromProfile started for user {UserId}", CurrentUserID);
                 var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
                 var result  = await _service.AnalyzeFromProfileAsync(CurrentUserID, webRoot);
                 return Ok(result);
             }
             catch (InvalidOperationException ex) { return CustomProblem400(ex.Message); }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "AnalyzeFromProfile failed for user {UserId}", CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
-        // Get last cached analysis result
         [HttpGet("result")]
         public async Task<IActionResult> GetResult()
         {
@@ -69,7 +78,11 @@ namespace AIInterview.Server.Controllers
                 if (result == null) return CustomProblem400("No analysis found. Please analyze your resume first.");
                 return Ok(result);
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetResult failed for user {UserId}", CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
     }
 }

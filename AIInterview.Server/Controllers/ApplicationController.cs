@@ -11,10 +11,12 @@ namespace AIInterview.Server.Controllers
     public class ApplicationController : BaseController
     {
         private readonly IApplicationRepository _repo;
+        private readonly ILogger<ApplicationController> _logger;
 
-        public ApplicationController(IApplicationRepository repo)
+        public ApplicationController(IApplicationRepository repo, ILogger<ApplicationController> logger)
         {
             _repo = repo;
+            _logger = logger;
         }
 
         // ── Public job browsing ──────────────────────────────────────────
@@ -31,7 +33,7 @@ namespace AIInterview.Server.Controllers
                 var jobs = await _repo.GetPublicJobsAsync(search, location, jobTypeId);
                 return Ok(jobs);
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex) { return CustomProblem500(ex.Message, ex); }
         }
 
         [AllowAnonymous]
@@ -44,7 +46,7 @@ namespace AIInterview.Server.Controllers
                 if (job == null) return CustomProblem400("Job not found.");
                 return Ok(job);
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex) { return CustomProblem500(ex.Message, ex); }
         }
 
         /// <summary>Get jobs recommended based on the user's skills.</summary>
@@ -56,7 +58,7 @@ namespace AIInterview.Server.Controllers
                 var jobs = await _repo.GetRecommendedJobsAsync(CurrentUserID);
                 return Ok(jobs);
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex) { return CustomProblem500(ex.Message, ex); }
         }        // ── Job seeker ───────────────────────────────────────────────────
 
         /// <summary>Apply to a job.</summary>
@@ -71,7 +73,7 @@ namespace AIInterview.Server.Controllers
                 var id = await _repo.ApplyAsync(jobId, CurrentUserID, request.CoverLetter);
                 return Ok(new { applicationId = id });
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex) { return CustomProblem500(ex.Message, ex); }
         }
 
         /// <summary>Check if current user has applied to a job.</summary>
@@ -83,7 +85,7 @@ namespace AIInterview.Server.Controllers
                 var applied = await _repo.HasAppliedAsync(jobId, CurrentUserID);
                 return Ok(new { hasApplied = applied });
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex) { return CustomProblem500(ex.Message, ex); }
         }
 
         /// <summary>Get all applications submitted by the current user.</summary>
@@ -95,7 +97,7 @@ namespace AIInterview.Server.Controllers
                 var result = await _repo.GetMyApplicationsAsync(CurrentUserID);
                 return Ok(result);
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex) { return CustomProblem500(ex.Message, ex); }
         }
 
         /// <summary>Withdraw an application.</summary>
@@ -108,7 +110,7 @@ namespace AIInterview.Server.Controllers
                 if (!success) return CustomProblem400("Application not found or unauthorized.");
                 return Ok(new { success });
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex) { return CustomProblem500(ex.Message, ex); }
         }
 
         // ── Employer ─────────────────────────────────────────────────────
@@ -122,7 +124,7 @@ namespace AIInterview.Server.Controllers
                 var result = await _repo.GetApplicantsByJobAsync(jobId, CurrentUserID);
                 return Ok(result);
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex) { return CustomProblem500(ex.Message, ex); }
         }
 
         /// <summary>Update applicant status: Pending | Shortlisted | Rejected | Hired</summary>
@@ -139,7 +141,7 @@ namespace AIInterview.Server.Controllers
                 if (!success) return CustomProblem400("Application not found or unauthorized.");
                 return Ok(new { success });
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex) { return CustomProblem500(ex.Message, ex); }
         }
 
         /// <summary>Schedule video interview for a shortlisted applicant (employer only).</summary>
@@ -163,7 +165,7 @@ namespace AIInterview.Server.Controllers
                 var interview = await _repo.GetInterviewByIdAsync(interviewId.Value, CurrentUserID);
                 return Ok(interview);
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex) { return CustomProblem500(ex.Message, ex); }
         }
 
         /// <summary>Get all scheduled interviews for a job posted by current employer.</summary>
@@ -175,7 +177,11 @@ namespace AIInterview.Server.Controllers
                 var result = await _repo.GetInterviewsByJobAsync(jobId, CurrentUserID);
                 return Ok(result);
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetInterviewsByJob failed for job {JobId}, user {UserId}", jobId, CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
         /// <summary>Get scheduled interviews for current job seeker account.</summary>
@@ -187,7 +193,11 @@ namespace AIInterview.Server.Controllers
                 var result = await _repo.GetMyInterviewsAsync(CurrentUserID);
                 return Ok(result);
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetMyInterviews failed for user {UserId}", CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
 
         /// <summary>Get a specific interview if current user is employer or candidate for it.</summary>
@@ -200,7 +210,11 @@ namespace AIInterview.Server.Controllers
                 if (interview == null) return CustomProblem400("Interview not found or unauthorized.");
                 return Ok(interview);
             }
-            catch (Exception ex) { return CustomProblem500(ex.Message); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetInterview failed for interview {InterviewId}, user {UserId}", interviewId, CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
         }
     }
 }
