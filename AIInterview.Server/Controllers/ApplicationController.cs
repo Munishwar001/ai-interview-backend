@@ -141,5 +141,66 @@ namespace AIInterview.Server.Controllers
             }
             catch (Exception ex) { return CustomProblem500(ex.Message); }
         }
+
+        /// <summary>Schedule video interview for a shortlisted applicant (employer only).</summary>
+        [HttpPost("{applicationId}/interviews")]
+        public async Task<IActionResult> ScheduleInterview(int applicationId, [FromBody] ScheduleVideoInterviewDto request)
+        {
+            try
+            {
+                if (request.ScheduledAt <= DateTime.UtcNow)
+                    return CustomProblem400("ScheduledAt must be a future date/time (UTC).");
+
+                var interviewId = await _repo.ScheduleVideoInterviewAsync(
+                    applicationId,
+                    CurrentUserID,
+                    request.ScheduledAt,
+                    request.Notes);
+
+                if (interviewId == null)
+                    return CustomProblem400("Only shortlisted applicants from your posted jobs can be scheduled for interview.");
+
+                var interview = await _repo.GetInterviewByIdAsync(interviewId.Value, CurrentUserID);
+                return Ok(interview);
+            }
+            catch (Exception ex) { return CustomProblem500(ex.Message); }
+        }
+
+        /// <summary>Get all scheduled interviews for a job posted by current employer.</summary>
+        [HttpGet("jobs/{jobId}/interviews")]
+        public async Task<IActionResult> GetInterviewsByJob(int jobId)
+        {
+            try
+            {
+                var result = await _repo.GetInterviewsByJobAsync(jobId, CurrentUserID);
+                return Ok(result);
+            }
+            catch (Exception ex) { return CustomProblem500(ex.Message); }
+        }
+
+        /// <summary>Get scheduled interviews for current job seeker account.</summary>
+        [HttpGet("my/interviews")]
+        public async Task<IActionResult> GetMyInterviews()
+        {
+            try
+            {
+                var result = await _repo.GetMyInterviewsAsync(CurrentUserID);
+                return Ok(result);
+            }
+            catch (Exception ex) { return CustomProblem500(ex.Message); }
+        }
+
+        /// <summary>Get a specific interview if current user is employer or candidate for it.</summary>
+        [HttpGet("interviews/{interviewId}")]
+        public async Task<IActionResult> GetInterview(int interviewId)
+        {
+            try
+            {
+                var interview = await _repo.GetInterviewByIdAsync(interviewId, CurrentUserID);
+                if (interview == null) return CustomProblem400("Interview not found or unauthorized.");
+                return Ok(interview);
+            }
+            catch (Exception ex) { return CustomProblem500(ex.Message); }
+        }
     }
 }

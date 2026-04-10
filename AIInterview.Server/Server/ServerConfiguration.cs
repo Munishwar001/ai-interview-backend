@@ -4,6 +4,7 @@ using AIInterview.Core.Comman;
 using AIInterview.Infrastructure.Data;
 using AIInterview.Infrastructure.Seed;
 using AIInterview.Server.Extensions;
+using AIInterview.Server.Hubs;
 using AIInterview.Server.Middlewares;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -19,6 +20,7 @@ namespace AIInterview.Server
             var connectionString = config.GetConnectionString("Default");
 
             services.AddControllers();
+            services.AddSignalR();
 
             services.ConfigureIdentity();
 
@@ -68,6 +70,7 @@ namespace AIInterview.Server
             app.UseAuthorization();
 
             app.MapControllers();
+            app.MapHub<InterviewHub>("/hubs/interview");
 
             using var scope = app.Services.CreateScope();
             var services = scope.ServiceProvider;

@@ -111,6 +111,145 @@ namespace AIInterview.Infrastructure.DataAccess
             return rows > 0;
         }
 
+        public async Task<int?> ScheduleVideoInterviewAsync(int applicationId, string employerId, DateTime scheduledAt, string? notes)
+        {
+            var roomId = Guid.NewGuid().ToString("N");
+
+            var sql = @"
+            INSERT INTO application_interviews
+                (application_id, job_id, employer_id, user_id, room_id, notes, scheduled_at, status, created_at)
+            SELECT
+                ja.id,
+                ja.job_id,
+                j.employerid,
+                ja.user_id,
+                @RoomId,
+                @Notes,
+                @ScheduledAt,
+                'Scheduled',
+                CURRENT_TIMESTAMP
+            FROM job_applications ja
+            JOIN jobs j ON j.id = ja.job_id
+            WHERE ja.id = @ApplicationId
+              AND j.employerid = @EmployerId
+              AND ja.status = 'Shortlisted'
+            RETURNING id;";
+
+            return await _db.QueryFirstOrDefaultAsync<int?>(sql, new
+            {
+                ApplicationId = applicationId,
+                EmployerId = employerId,
+                ScheduledAt = scheduledAt,
+                RoomId = roomId,
+                Notes = notes
+            });
+        }
+
+        public async Task<IEnumerable<VideoInterviewDto>> GetInterviewsByJobAsync(int jobId, string employerId)
+        {
+            var sql = @"
+            SELECT
+                ai.id            AS Id,
+                ai.application_id AS ApplicationId,
+                ai.job_id        AS JobId,
+                ai.employer_id   AS EmployerId,
+                ai.user_id       AS UserId,
+                up.name          AS CandidateName,
+                up.email         AS CandidateEmail,
+                cp.company_name  AS CompanyName,
+                ai.room_id       AS RoomId,
+                ai.notes         AS Notes,
+                ai.scheduled_at  AS ScheduledAt,
+                ai.status        AS Status,
+                ai.created_at    AS CreatedAt
+            FROM application_interviews ai
+            LEFT JOIN user_profiles up ON up.user_id = ai.user_id
+            LEFT JOIN company_profiles cp ON cp.user_id = ai.employer_id
+            WHERE ai.job_id = @JobId
+              AND ai.employer_id = @EmployerId
+            ORDER BY ai.scheduled_at DESC;";
+
+            return await _db.QueryAsync<VideoInterviewDto>(sql, new
+            {
+                JobId = jobId,
+                EmployerId = employerId
+            });
+        }
+
+        public async Task<IEnumerable<VideoInterviewDto>> GetMyInterviewsAsync(string userId)
+        {
+            var sql = @"
+            SELECT
+                ai.id            AS Id,
+                ai.application_id AS ApplicationId,
+                ai.job_id        AS JobId,
+                ai.employer_id   AS EmployerId,
+                ai.user_id       AS UserId,
+                up.name          AS CandidateName,
+                up.email         AS CandidateEmail,
+                cp.company_name  AS CompanyName,
+                ai.room_id       AS RoomId,
+                ai.notes         AS Notes,
+                ai.scheduled_at  AS ScheduledAt,
+                ai.status        AS Status,
+                ai.created_at    AS CreatedAt
+            FROM application_interviews ai
+            LEFT JOIN user_profiles up ON up.user_id = ai.user_id
+            LEFT JOIN company_profiles cp ON cp.user_id = ai.employer_id
+            WHERE ai.user_id = @UserId
+            ORDER BY ai.scheduled_at DESC;";
+
+            return await _db.QueryAsync<VideoInterviewDto>(sql, new { UserId = userId });
+        }
+
+        public async Task<VideoInterviewDto?> GetInterviewByIdAsync(int interviewId, string userId)
+        {
+            var sql = @"
+            SELECT
+                ai.id             AS Id,
+                ai.application_id AS ApplicationId,
+                ai.job_id         AS JobId,
+                ai.employer_id    AS EmployerId,
+                ai.user_id        AS UserId,
+                up.name           AS CandidateName,
+                up.email          AS CandidateEmail,
+                cp.company_name   AS CompanyName,
+                ai.room_id        AS RoomId,
+                ai.notes          AS Notes,
+                ai.scheduled_at   AS ScheduledAt,
+                ai.status         AS Status,
+                ai.created_at     AS CreatedAt
+            FROM application_interviews ai
+            LEFT JOIN user_profiles up ON up.user_id = ai.user_id
+            LEFT JOIN company_profiles cp ON cp.user_id = ai.employer_id
+            WHERE ai.id = @InterviewId
+              AND (ai.user_id = @UserId OR ai.employer_id = @UserId)
+            LIMIT 1;";
+
+            return await _db.QueryFirstOrDefaultAsync<VideoInterviewDto>(sql, new
+            {
+                InterviewId = interviewId,
+                UserId = userId
+            });
+        }
+
+        public async Task<bool> CanAccessInterviewAsync(int interviewId, string userId)
+        {
+            var sql = @"
+            SELECT COUNT(1)
+            FROM application_interviews
+            WHERE id = @InterviewId
+              AND (user_id = @UserId OR employer_id = @UserId);";
+
+            var count = await _db.ExecuteScalarAsync<int>(sql, new
+            {
+                InterviewId = interviewId,
+                UserId = userId
+            });
+
+            return count > 0;
+        }
+
         public async Task<IEnumerable<PostedJobDto>> GetPublicJobsAsync(string? search, string? location, int? jobTypeId)
         {
             var sql = @"
