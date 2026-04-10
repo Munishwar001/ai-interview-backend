@@ -94,6 +94,24 @@ namespace AIInterview.Server.Controllers
             catch (Exception ex) { return CustomProblem500(ex.Message); }
         }
 
+        [HttpGet("resume-status")]
+        public async Task<IActionResult> GetResumeStatus()
+        {
+            try
+            {
+                var profile = await _jobSeekerService.GetProfileAsync(CurrentUserID);
+                var isUploaded = profile != null && !string.IsNullOrEmpty(profile.ResumeFilePath);
+
+                return Ok(new
+                {
+                    isUploaded,
+                    fileName = isUploaded ? profile!.ResumeFileName : null,
+                    filePath = isUploaded ? profile!.ResumeFilePath : null
+                });
+            }
+            catch (Exception ex) { return CustomProblem500(ex.Message); }
+        }
+
         [HttpPost("upload-resume")]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> UploadResume(IFormFile resume)
