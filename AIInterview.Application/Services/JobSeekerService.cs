@@ -51,6 +51,18 @@ namespace AIInterview.Application.Services
             catch (Exception) { throw; }
         }
 
+        public async Task<int> GetProfileViewsAsync(string userId)
+        {
+            try { return await _profileRepo.GetProfileViewsAsync(userId); }
+            catch (Exception) { throw; }
+        }
+
+        public async Task<bool> IncrementProfileViewsAsync(string userId)
+        {
+            try { return await _profileRepo.IncrementProfileViewsAsync(userId); }
+            catch (Exception) { throw; }
+        }
+
         private static int CalculateProfileCompletion(UpsertUserProfileDto dto, bool hasResume = false, bool hasSkills = false)
         {
             var fields = new[]

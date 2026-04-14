@@ -473,5 +473,42 @@ namespace AIInterview.Infrastructure.DataAccess
 
             return jobs;
         }
+
+        public async Task<IEnumerable<PostedJobDto>> GetLatestJobsAsync(int limit = 3)
+        {
+            var sql = @"
+            SELECT
+                j.id, j.title, j.description, j.location,
+                j.job_type_id   AS JobTypeId,
+                jt.name         AS JobType,
+                j.salarymin     AS SalaryMin,
+                j.salarymax     AS SalaryMax,
+                j.status,
+                j.createdat     AS CreatedAt,
+                COALESCE(j.views, 0) AS Views,
+                COALESCE((SELECT COUNT(*) FROM job_applications ja WHERE ja.job_id = j.id), 0) AS Applicants,
+                cp.id           AS CompanyId,
+                cp.company_name AS CompanyName,
+                cp.logo_url     AS CompanyLogo,
+                cp.description  AS CompanyDescription
+            FROM jobs j
+            LEFT JOIN job_types jt ON jt.id = j.job_type_id
+            LEFT JOIN company_profiles cp ON cp.user_id = j.employerid
+            WHERE j.status = 'Active'
+            ORDER BY j.createdat DESC
+            LIMIT @Limit;";
+
+            var jobs = (await _db.QueryAsync<PostedJobDto>(sql, new { Limit = limit })).ToList();
+
+            foreach (var job in jobs)
+            {
+                job.Skills = (await _db.QueryAsync<SkillTagDto>(@"
+                    SELECT s.id, s.name FROM job_skills js
+                    JOIN skills s ON js.skill_id = s.id
+                    WHERE js.job_id = @JobId", new { JobId = job.Id })).ToList();
+            }
+
+            return jobs;
+        }
     }
 }

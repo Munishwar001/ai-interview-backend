@@ -29,5 +29,6 @@ namespace AIInterview.Application.Interface
         Task<IEnumerable<PostedJobDto>> GetPublicJobsAsync(string? search, string? location, int? jobTypeId);
         Task<PostedJobDto?> GetPublicJobByIdAsync(int jobId);
         Task<IEnumerable<PostedJobDto>> GetRecommendedJobsAsync(string userId);
+        Task<IEnumerable<PostedJobDto>> GetLatestJobsAsync(int limit = 3);
     }
 }

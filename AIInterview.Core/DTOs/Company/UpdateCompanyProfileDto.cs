@@ -35,6 +35,7 @@
 
         public bool IsVerified { get; set; }
         public int ProfileCompletionPercentage { get; set; }
+        public int ProfileViews { get; set; }
 
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
@@ -103,6 +104,7 @@
         public string? TwitterUrl { get; set; }
         public bool IsVerified { get; set; }
         public int ProfileCompletionPercentage { get; set; }
+        public int ProfileViews { get; set; }
     }
 
 }

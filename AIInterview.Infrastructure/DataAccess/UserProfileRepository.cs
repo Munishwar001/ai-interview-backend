@@ -20,20 +20,64 @@ namespace AIInterview.Infrastructure.DataAccess
             {
                 var sql = @"
                 SELECT
-                    id, name, title, location, email, avatar, initial,
+                    up.id, up.name, up.title, up.location, up.email, up.avatar, up.initial,
                     profile_completion  AS ProfileCompletion,
-                    resume_file_name    AS ResumeFileName,
-                    resume_file_path    AS ResumeFilePath,
-                    linkedin            AS LinkedIn,
-                    github              AS GitHub,
-                    website,
-                    created_at          AS CreatedAt,
-                    updated_at          AS UpdatedAt
-                FROM user_profiles
-                WHERE user_id = @UserId
+                    COALESCE((to_jsonb(up) ->> 'profile_views')::int, 0) AS ProfileViews,
+                    up.resume_file_name    AS ResumeFileName,
+                    up.resume_file_path    AS ResumeFilePath,
+                    up.linkedin            AS LinkedIn,
+                    up.github              AS GitHub,
+                    up.website,
+                    up.created_at          AS CreatedAt,
+                    up.updated_at          AS UpdatedAt
+                FROM user_profiles up
+                WHERE up.user_id = @UserId
                 LIMIT 1;";
 
                 return await _db.QueryFirstOrDefaultAsync<UserProfileDto>(sql, new { UserId = userId });
+            }
+            catch (Exception) { throw; }
+        }
+
+        public async Task<int> GetProfileViewsAsync(string userId)
+        {
+            try
+            {
+                var sql = @"
+                SELECT COALESCE((to_jsonb(up) ->> 'profile_views')::int, 0)
+                FROM user_profiles up
+                WHERE up.user_id = @UserId
+                LIMIT 1;";
+                var views = await _db.ExecuteScalarAsync<int?>(sql, new { UserId = userId });
+                return views ?? 0;
+            }
+            catch (Exception) { throw; }
+        }
+
+        public async Task<bool> IncrementProfileViewsAsync(string userId)
+        {
+            try
+            {
+                var hasColumnSql = @"
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'user_profiles'
+                      AND column_name = 'profile_views'
+                );";
+
+                var hasColumn = await _db.ExecuteScalarAsync<bool>(hasColumnSql);
+                if (!hasColumn) return false;
+
+                var sql = @"
+                UPDATE user_profiles
+                SET profile_views = COALESCE(profile_views, 0) + 1,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = @UserId;";
+
+                var rows = await _db.ExecuteAsync(sql, new { UserId = userId });
+                return rows > 0;
             }
             catch (Exception) { throw; }
         }

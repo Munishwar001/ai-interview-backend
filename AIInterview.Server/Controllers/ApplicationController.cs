@@ -49,6 +49,20 @@ namespace AIInterview.Server.Controllers
             catch (Exception ex) { return CustomProblem500(ex.Message, ex); }
         }
 
+        /// <summary>Get latest active jobs (default: 3).</summary>
+        [AllowAnonymous]
+        [HttpGet("jobs/latest")]
+        public async Task<IActionResult> GetLatestJobs([FromQuery] int limit = 3)
+        {
+            try
+            {
+                var safeLimit = limit <= 0 ? 3 : Math.Min(limit, 20);
+                var jobs = await _repo.GetLatestJobsAsync(safeLimit);
+                return Ok(jobs);
+            }
+            catch (Exception ex) { return CustomProblem500(ex.Message, ex); }
+        }
+
         /// <summary>Get jobs recommended based on the user's skills.</summary>
         [HttpGet("jobs/recommended")]
         public async Task<IActionResult> GetRecommended()

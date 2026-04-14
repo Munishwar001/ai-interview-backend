@@ -15,6 +15,7 @@ namespace AIInterview.Core.DTOs.JobSeeker
         public string? LinkedIn { get; set; }
         public string? GitHub { get; set; }
         public string? Website { get; set; }
+        public int ProfileViews { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
     }

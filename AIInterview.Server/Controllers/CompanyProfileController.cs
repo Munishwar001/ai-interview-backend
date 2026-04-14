@@ -40,6 +40,36 @@ namespace AIInterview.Server.Controllers
             }
         }
 
+        [HttpGet("views")]
+        public async Task<IActionResult> GetMyProfileViews()
+        {
+            try
+            {
+                var views = await _companyService.GetProfileViewsAsync(CurrentUserID);
+                return Ok(new { views });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetMyProfileViews failed for user {UserId}", CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
+        }
+
+        [HttpPost("views/company/{companyId:int}/increment")]
+        public async Task<IActionResult> IncrementProfileViewsByCompanyId(int companyId)
+        {
+            try
+            {
+                var success = await _companyService.IncrementProfileViewsByCompanyIdAsync(companyId);
+                return Ok(new { success });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "IncrementProfileViewsByCompanyId failed for company {CompanyId}", companyId);
+                return CustomProblem500(ex.Message, ex);
+            }
+        }
+
         [HttpPut]
         public async Task<IActionResult> UpsertCompanyProfile([FromBody] UpdateCompanyProfileDto request)
         {

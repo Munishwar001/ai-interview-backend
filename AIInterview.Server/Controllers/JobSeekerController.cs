@@ -41,6 +41,39 @@ namespace AIInterview.Server.Controllers
             }
         }
 
+        [HttpGet("profile/views")]
+        public async Task<IActionResult> GetProfileViews()
+        {
+            try
+            {
+                var views = await _jobSeekerService.GetProfileViewsAsync(CurrentUserID);
+                return Ok(new { views });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetProfileViews failed for user {UserId}", CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
+        }
+
+        [HttpPost("profile/views/{userId}/increment")]
+        public async Task<IActionResult> IncrementProfileViews(string userId)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(userId)) return CustomProblem400("UserId is required.");
+                if (userId == CurrentUserID) return Ok(new { success = false, skipped = true });
+
+                var success = await _jobSeekerService.IncrementProfileViewsAsync(userId);
+                return Ok(new { success });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "IncrementProfileViews failed for target {TargetUserId}", userId);
+                return CustomProblem500(ex.Message, ex);
+            }
+        }
+
         [HttpPut("profile")]
         public async Task<IActionResult> UpsertProfile([FromBody] UpsertUserProfileDto request)
         {
