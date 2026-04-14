@@ -1,6 +1,7 @@
 using AIInterview.Application.Interface;
 using AIInterview.Application.Services;
 using AIInterview.Core.DTOs.Company;
+using AIInterview.Server.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,13 +13,13 @@ namespace AIInterview.Server.Controllers
     public class CompanyProfileController : BaseController
     {
         private readonly CompanyService _companyService;
-        private readonly IWebHostEnvironment _env;
+        private readonly ICloudinaryFileService _cloudinaryFileService;
         private readonly ILogger<CompanyProfileController> _logger;
 
-        public CompanyProfileController(CompanyService companyService, IWebHostEnvironment env, ILogger<CompanyProfileController> logger)
+        public CompanyProfileController(CompanyService companyService, ICloudinaryFileService cloudinaryFileService, ILogger<CompanyProfileController> logger)
         {
             _companyService = companyService;
-            _env            = env;
+            _cloudinaryFileService = cloudinaryFileService;
             _logger         = logger;
         }
 
@@ -103,15 +104,50 @@ namespace AIInterview.Server.Controllers
                 if (logo == null && coverImage == null)
                     return CustomProblem400("At least one image (logo or coverImage) is required.");
 
-                var uploadsFolder = Path.Combine(
-                    _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
-                    "uploads", "company");
-                Directory.CreateDirectory(uploadsFolder);
+                var existingProfile = await _companyService.GetByUserIdAsync(CurrentUserID);
 
-                string? logoUrl  = logo        != null ? await SaveFileAsync(logo,        uploadsFolder, "logo")  : null;
-                string? coverUrl = coverImage  != null ? await SaveFileAsync(coverImage,  uploadsFolder, "cover") : null;
+                string? logoUrl = null;
+                if (logo != null)
+                {
+                    ValidateImageFile(logo, 5 * 1024 * 1024);
+                    var logoUpload = await _cloudinaryFileService.UploadImageAsync(
+                        logo,
+                        $"ai-interview/companies/{CurrentUserID}/assets",
+                        "logo");
+                    logoUrl = logoUpload.Url;
+                }
+
+                string? coverUrl = null;
+                if (coverImage != null)
+                {
+                    ValidateImageFile(coverImage, 5 * 1024 * 1024);
+                    var coverUpload = await _cloudinaryFileService.UploadImageAsync(
+                        coverImage,
+                        $"ai-interview/companies/{CurrentUserID}/assets",
+                        "cover");
+                    coverUrl = coverUpload.Url;
+                }
 
                 var result = await _companyService.UpdateImagesAsync(CurrentUserID, logoUrl, coverUrl);
+
+                if (logoUrl != null && !string.IsNullOrWhiteSpace(existingProfile?.LogoUrl) && !existingProfile.LogoUrl.Equals(logoUrl, StringComparison.OrdinalIgnoreCase))
+                {
+                    try { await _cloudinaryFileService.DeleteAsync(existingProfile.LogoUrl); }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to delete previous company logo for user {UserId}", CurrentUserID);
+                    }
+                }
+
+                if (coverUrl != null && !string.IsNullOrWhiteSpace(existingProfile?.CoverImageUrl) && !existingProfile.CoverImageUrl.Equals(coverUrl, StringComparison.OrdinalIgnoreCase))
+                {
+                    try { await _cloudinaryFileService.DeleteAsync(existingProfile.CoverImageUrl); }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to delete previous company cover image for user {UserId}", CurrentUserID);
+                    }
+                }
+
                 _logger.LogInformation("Company images uploaded for user {UserId}", CurrentUserID);
                 return Ok(result);
             }
@@ -123,7 +159,7 @@ namespace AIInterview.Server.Controllers
             }
         }
 
-        private async Task<string> SaveFileAsync(IFormFile file, string folder, string prefix)
+        private static void ValidateImageFile(IFormFile file, long maxBytes)
         {
             var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
             var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
@@ -131,16 +167,8 @@ namespace AIInterview.Server.Controllers
             if (!allowedExtensions.Contains(ext))
                 throw new InvalidOperationException($"File type '{ext}' is not allowed. Use jpg, png, or webp.");
 
-            if (file.Length > 5 * 1024 * 1024)
+            if (file.Length > maxBytes)
                 throw new InvalidOperationException("File size must not exceed 5MB.");
-
-            var fileName = $"{prefix}_{CurrentUserID}_{Guid.NewGuid()}{ext}";
-            var filePath = Path.Combine(folder, fileName);
-
-            using var stream = new FileStream(filePath, FileMode.Create);
-            await file.CopyToAsync(stream);
-
-            return $"/uploads/company/{fileName}";
         }
 
         #endregion

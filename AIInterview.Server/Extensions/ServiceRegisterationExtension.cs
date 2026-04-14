@@ -1,5 +1,6 @@
-﻿using AIInterview.Infrastructure.Extensions;
-using AIInterview.Application.Extensions;
+﻿using AIInterview.Application.Extensions;
+using AIInterview.Infrastructure.Extensions;
+using AIInterview.Server.Services;
 
 namespace AIInterview.Server.Extensions
 {
@@ -7,6 +8,7 @@ namespace AIInterview.Server.Extensions
     {
         public static IServiceCollection RegisterServices(this IServiceCollection services, string connectionString)
         {
+            services.AddSingleton<ICloudinaryFileService, CloudinaryFileService>();
             services.RegisterApplicationServices();
             services.RegisterInfrastructureServices(connectionString);
             return services;

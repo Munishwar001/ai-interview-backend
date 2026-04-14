@@ -29,5 +29,10 @@
   "Groq": {
     "ApiKey": "YOUR_GROQ_API_KEY"
   },
+  "CloudinarySettings": {
+    "CloudName": "YOUR_CLOUDINARY_CLOUD_NAME",
+    "ApiKey": "YOUR_CLOUDINARY_API_KEY",
+    "ApiSecret": "YOUR_CLOUDINARY_API_SECRET"
+  },
   "AllowedHosts": "*"
 }

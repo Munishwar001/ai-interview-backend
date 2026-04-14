@@ -3,9 +3,11 @@ using AIInterview.Application.Services;
 using AIInterview.Core.Comman;
 using AIInterview.Infrastructure.Data;
 using AIInterview.Infrastructure.Seed;
+using AIInterview.Server.Models;
 using AIInterview.Server.Extensions;
 using AIInterview.Server.Hubs;
 using AIInterview.Server.Middlewares;
+using AIInterview.Server.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -36,6 +38,7 @@ namespace AIInterview.Server
                 options.UseNpgsql(connectionString));
 
             services.Configure<JwtConfig>(options => config.GetSection("Jwt").Bind(options));
+            services.Configure<CloudinarySettings>(options => config.GetSection("CloudinarySettings").Bind(options));
             
             services.RegisterServices(connectionString);
 

@@ -255,4 +255,7 @@ After 5 questions `isCompleted` becomes `true` and `feedbackSummary` contains th
 | `Groq:ApiKey` | Groq API key (console.groq.com) |
 | `Ollama:BaseUrl` | Ollama base URL (default: http://localhost:11434) |
 | `Ollama:Model` | Ollama model name (default: llama3.2) |
+| `CloudinarySettings:CloudName` | Cloudinary cloud name |
+| `CloudinarySettings:ApiKey` | Cloudinary API key |
+| `CloudinarySettings:ApiSecret` | Cloudinary API secret |
 | `Cors:AllowedOrigins` | Array of allowed frontend origins |
