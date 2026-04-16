@@ -1,4 +1,5 @@
 ﻿using AIInterview.Application.Extensions;
+using AIInterview.Application.Interface;
 using AIInterview.Infrastructure.Extensions;
 using AIInterview.Server.Services;
 

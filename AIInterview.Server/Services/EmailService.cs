@@ -3,6 +3,7 @@ using AIInterview.Server.Models;
 using Microsoft.Extensions.Options;
 using System.Net;
 using System.Net.Mail;
+using System.Web;
 
 namespace AIInterview.Server.Services
 {
@@ -66,9 +67,31 @@ namespace AIInterview.Server.Services
             var safeEmail = WebUtility.HtmlEncode(toEmail);
             var safeUrl = WebUtility.HtmlEncode(resetUrl);
 
+            // Extract code from URL for display (last 8 chars of code parameter)
+            var resetCode = ExtractResetCode(resetUrl);
+
             return template
                 .Replace("{{USER_EMAIL}}", safeEmail, StringComparison.Ordinal)
-                .Replace("{{RESET_URL}}", safeUrl, StringComparison.Ordinal);
+                .Replace("{{RESET_URL}}", safeUrl, StringComparison.Ordinal)
+                .Replace("{{RESET_CODE}}", resetCode, StringComparison.Ordinal);
+        }
+
+        private static string ExtractResetCode(string resetUrl)
+        {
+            try
+            {
+                // Extract the 'code' parameter from the URL
+                var uri = new Uri(resetUrl);
+                var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+                var code = query.Get("code") ?? "UNKNOWN";
+                
+                // Return last 8 characters for a shorter, more readable code
+                return code.Length > 8 ? code.Substring(code.Length - 8) : code;
+            }
+            catch
+            {
+                return "RESET-CODE";
+            }
         }
     }
 }
