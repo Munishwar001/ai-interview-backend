@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  # The AI Interview .NET Backend API
+  api:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-interview-api
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__Default=${DB_CONNECTION_STRING}
+      - Jwt__SecretKey=${JWT_SECRET_KEY}
+      - Google__ClientId=${GOOGLE_CLIENT_ID}
+      - Groq__ApiKey=${GROQ_API_KEY}
+      - CloudinarySettings__CloudName=${CLOUDINARY_CLOUD_NAME}
+      - CloudinarySettings__ApiKey=${CLOUDINARY_API_KEY}
+      - CloudinarySettings__ApiSecret=${CLOUDINARY_API_SECRET}
+      - ApplicationURLConfig__HomeUrl=${FRONTEND_URL}
+      - EmailSettings__Username=${EMAIL_USERNAME}
+      - EmailSettings__Password=${EMAIL_PASSWORD}
+      - Ollama__BaseUrl=${OLLAMA_BASE_URL}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - ai-interview-network
+    labels:
+      - "com.example.description=AI Interview Backend API"
+
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: ai-interview-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ai-interview-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Ollama for local LLM models
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ai-interview-ollama
+    restart: always
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - ai-interview-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  postgres_data:
+  ollama_data:
+
+networks:
+  ai-interview-network:
+    driver: bridge

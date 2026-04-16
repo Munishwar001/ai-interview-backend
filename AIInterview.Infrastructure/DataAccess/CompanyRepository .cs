@@ -29,8 +29,9 @@ namespace AIInterview.Infrastructure.DataAccess
                     city, state, country, postal_code AS PostalCode,
                     linkedin_url AS LinkedInUrl, twitter_url AS TwitterUrl,
                     is_verified AS IsVerified, profile_completion_percentage AS ProfileCompletionPercentage,
+                    COALESCE((to_jsonb(cp) ->> 'profile_views')::int, 0) AS ProfileViews,
                     created_at AS CreatedAt, updated_at AS UpdatedAt
-                FROM company_profiles WHERE user_id = @UserId LIMIT 1";
+                FROM company_profiles cp WHERE cp.user_id = @UserId LIMIT 1";
 
                 return await _db.QueryFirstOrDefaultAsync<CompanyProfile>(sql, new { UserId = userId });
             }
@@ -65,13 +66,57 @@ namespace AIInterview.Infrastructure.DataAccess
                     cp.linkedin_url          AS LinkedInUrl,
                     cp.twitter_url           AS TwitterUrl,
                     cp.is_verified           AS IsVerified,
-                    cp.profile_completion_percentage AS ProfileCompletionPercentage
+                    cp.profile_completion_percentage AS ProfileCompletionPercentage,
+                    COALESCE((to_jsonb(cp) ->> 'profile_views')::int, 0) AS ProfileViews
                 FROM company_profiles cp
                 LEFT JOIN company_sizes cs ON cp.company_size_id = cs.id
                 WHERE cp.user_id = @UserId
                 LIMIT 1;";
 
                 return await _db.QueryFirstOrDefaultAsync<CompanyProfileResponseDto>(sql, new { UserId = userId });
+            }
+            catch (Exception) { throw; }
+        }
+
+        public async Task<int> GetProfileViewsAsync(string userId)
+        {
+            try
+            {
+                var sql = @"
+                SELECT COALESCE((to_jsonb(cp) ->> 'profile_views')::int, 0)
+                FROM company_profiles cp
+                WHERE cp.user_id = @UserId
+                LIMIT 1;";
+                var views = await _db.ExecuteScalarAsync<int?>(sql, new { UserId = userId });
+                return views ?? 0;
+            }
+            catch (Exception) { throw; }
+        }
+
+        public async Task<bool> IncrementProfileViewsByCompanyIdAsync(int companyId)
+        {
+            try
+            {
+                var hasColumnSql = @"
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'company_profiles'
+                      AND column_name = 'profile_views'
+                );";
+
+                var hasColumn = await _db.ExecuteScalarAsync<bool>(hasColumnSql);
+                if (!hasColumn) return false;
+
+                var sql = @"
+                UPDATE company_profiles
+                SET profile_views = COALESCE(profile_views, 0) + 1,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = @CompanyId;";
+
+                var rows = await _db.ExecuteAsync(sql, new { CompanyId = companyId });
+                return rows > 0;
             }
             catch (Exception) { throw; }
         }

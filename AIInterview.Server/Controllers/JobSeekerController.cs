@@ -1,23 +1,27 @@
 using AIInterview.Application.Services;
+using AIInterview.Core.Constants;
 using AIInterview.Core.DTOs.JobSeeker;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using AIInterview.Server.Services;
 
 namespace AIInterview.Server.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    [Authorize(Roles = AppRoles.JobSeeker)]
     public class JobSeekerController : BaseController
     {
         private readonly JobSeekerService _jobSeekerService;
-        private readonly IWebHostEnvironment _env;
+        private readonly ICloudinaryFileService _cloudinaryFileService;
+        private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<JobSeekerController> _logger;
 
-        public JobSeekerController(JobSeekerService jobSeekerService, IWebHostEnvironment env, ILogger<JobSeekerController> logger)
+        public JobSeekerController(JobSeekerService jobSeekerService, ICloudinaryFileService cloudinaryFileService, IHttpClientFactory httpClientFactory, ILogger<JobSeekerController> logger)
         {
             _jobSeekerService = jobSeekerService;
-            _env              = env;
+            _cloudinaryFileService = cloudinaryFileService;
+            _httpClientFactory = httpClientFactory;
             _logger           = logger;
         }
 
@@ -34,6 +38,39 @@ namespace AIInterview.Server.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "GetProfile failed for user {UserId}", CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
+        }
+
+        [HttpGet("profile/views")]
+        public async Task<IActionResult> GetProfileViews()
+        {
+            try
+            {
+                var views = await _jobSeekerService.GetProfileViewsAsync(CurrentUserID);
+                return Ok(new { views });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetProfileViews failed for user {UserId}", CurrentUserID);
+                return CustomProblem500(ex.Message, ex);
+            }
+        }
+
+        [HttpPost("profile/views/{userId}/increment")]
+        public async Task<IActionResult> IncrementProfileViews(string userId)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(userId)) return CustomProblem400("UserId is required.");
+                if (userId == CurrentUserID) return Ok(new { success = false, skipped = true });
+
+                var success = await _jobSeekerService.IncrementProfileViewsAsync(userId);
+                return Ok(new { success });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "IncrementProfileViews failed for target {TargetUserId}", userId);
                 return CustomProblem500(ex.Message, ex);
             }
         }
@@ -73,22 +110,27 @@ namespace AIInterview.Server.Controllers
                 if (avatar.Length > 2 * 1024 * 1024)
                     return CustomProblem400("File size must not exceed 2MB.");
 
-                var uploadsFolder = Path.Combine(
-                    _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
-                    "uploads", "avatars");
-                Directory.CreateDirectory(uploadsFolder);
+                var existingProfile = await _jobSeekerService.GetProfileAsync(CurrentUserID);
+                var oldAvatar = existingProfile?.Avatar;
 
-                var fileName = $"avatar_{CurrentUserID}_{Guid.NewGuid()}{ext}";
-                var filePath = Path.Combine(uploadsFolder, fileName);
+                var uploadResult = await _cloudinaryFileService.UploadImageAsync(
+                    avatar,
+                    $"ai-interview/users/{CurrentUserID}/avatars",
+                    "avatar");
 
-                using var stream = new FileStream(filePath, FileMode.Create);
-                await avatar.CopyToAsync(stream);
+                var success = await _jobSeekerService.UpdateAvatarAsync(CurrentUserID, uploadResult.Url);
+                _logger.LogInformation("Avatar uploaded for user {UserId}: {Path}", CurrentUserID, uploadResult.Url);
 
-                var relativePath = $"/uploads/avatars/{fileName}";
-                var success = await _jobSeekerService.UpdateAvatarAsync(CurrentUserID, relativePath);
-                _logger.LogInformation("Avatar uploaded for user {UserId}: {Path}", CurrentUserID, relativePath);
+                if (success && !string.IsNullOrWhiteSpace(oldAvatar) && !oldAvatar.Equals(uploadResult.Url, StringComparison.OrdinalIgnoreCase))
+                {
+                    try { await _cloudinaryFileService.DeleteAsync(oldAvatar); }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to delete previous avatar for user {UserId}", CurrentUserID);
+                    }
+                }
 
-                return Ok(new { success, avatarPath = relativePath });
+                return Ok(new { success, avatarPath = uploadResult.Url });
             }
             catch (Exception ex)
             {
@@ -102,9 +144,21 @@ namespace AIInterview.Server.Controllers
         {
             try
             {
-                var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-                var success = await _jobSeekerService.DeleteAvatarAsync(CurrentUserID, webRoot);
+                var existingProfile = await _jobSeekerService.GetProfileAsync(CurrentUserID);
+                var existingAvatar = existingProfile?.Avatar;
+
+                var success = await _jobSeekerService.DeleteAvatarAsync(CurrentUserID);
                 if (!success) return CustomProblem400("No avatar found to delete.");
+
+                if (!string.IsNullOrWhiteSpace(existingAvatar))
+                {
+                    try { await _cloudinaryFileService.DeleteAsync(existingAvatar); }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to delete avatar from Cloudinary for user {UserId}", CurrentUserID);
+                    }
+                }
+
                 _logger.LogInformation("Avatar deleted for user {UserId}", CurrentUserID);
                 return Ok(new { success });
             }
@@ -154,22 +208,27 @@ namespace AIInterview.Server.Controllers
                 if (resume.Length > 5 * 1024 * 1024)
                     return CustomProblem400("File size must not exceed 5MB.");
 
-                var uploadsFolder = Path.Combine(
-                    _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
-                    "uploads", "resumes");
-                Directory.CreateDirectory(uploadsFolder);
+                var existingProfile = await _jobSeekerService.GetProfileAsync(CurrentUserID);
+                var oldResumePath = existingProfile?.ResumeFilePath;
 
-                var fileName = $"resume_{CurrentUserID}_{Guid.NewGuid()}{ext}";
-                var filePath = Path.Combine(uploadsFolder, fileName);
+                var uploadResult = await _cloudinaryFileService.UploadRawAsync(
+                    resume,
+                    $"ai-interview/users/{CurrentUserID}/resumes",
+                    "resume");
 
-                using var stream = new FileStream(filePath, FileMode.Create);
-                await resume.CopyToAsync(stream);
-
-                var relativePath = $"/uploads/resumes/{fileName}";
-                var success = await _jobSeekerService.UpdateResumeAsync(CurrentUserID, resume.FileName, relativePath);
+                var success = await _jobSeekerService.UpdateResumeAsync(CurrentUserID, resume.FileName, uploadResult.Url);
                 _logger.LogInformation("Resume uploaded for user {UserId}: {FileName}", CurrentUserID, resume.FileName);
 
-                return Ok(new { success, fileName = resume.FileName, filePath = relativePath });
+                if (success && !string.IsNullOrWhiteSpace(oldResumePath) && !oldResumePath.Equals(uploadResult.Url, StringComparison.OrdinalIgnoreCase))
+                {
+                    try { await _cloudinaryFileService.DeleteAsync(oldResumePath); }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to delete previous resume for user {UserId}", CurrentUserID);
+                    }
+                }
+
+                return Ok(new { success, fileName = resume.FileName, filePath = uploadResult.Url });
             }
             catch (Exception ex)
             {
@@ -183,9 +242,21 @@ namespace AIInterview.Server.Controllers
         {
             try
             {
-                var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-                var success = await _jobSeekerService.DeleteResumeAsync(CurrentUserID, webRoot);
+                var existingProfile = await _jobSeekerService.GetProfileAsync(CurrentUserID);
+                var existingResumePath = existingProfile?.ResumeFilePath;
+
+                var success = await _jobSeekerService.DeleteResumeAsync(CurrentUserID);
                 if (!success) return CustomProblem400("No resume found to delete.");
+
+                if (!string.IsNullOrWhiteSpace(existingResumePath))
+                {
+                    try { await _cloudinaryFileService.DeleteAsync(existingResumePath); }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to delete resume from Cloudinary for user {UserId}", CurrentUserID);
+                    }
+                }
+
                 _logger.LogInformation("Resume deleted for user {UserId}", CurrentUserID);
                 return Ok(new { success });
             }
@@ -206,8 +277,42 @@ namespace AIInterview.Server.Controllers
                 if (profile == null || string.IsNullOrEmpty(profile.ResumeFilePath))
                     return CustomProblem400("No resume found.");
 
+                if (Uri.TryCreate(profile.ResumeFilePath, UriKind.Absolute, out _))
+                {
+                    var client = _httpClientFactory.CreateClient();
+                    using var response = await client.GetAsync(profile.ResumeFilePath, HttpCompletionOption.ResponseHeadersRead);
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        _logger.LogWarning("Unable to fetch cloud resume for user {UserId}. Status code: {StatusCode}", CurrentUserID, response.StatusCode);
+                        return CustomProblem400("Resume file not found on server.");
+                    }
+
+                    var remoteContentType = response.Content.Headers.ContentType?.MediaType;
+                    if (string.IsNullOrWhiteSpace(remoteContentType))
+                    {
+                        var extFromName = Path.GetExtension(profile.ResumeFileName ?? string.Empty).ToLowerInvariant();
+                        remoteContentType = extFromName switch
+                        {
+                            ".pdf" => "application/pdf",
+                            ".doc" => "application/msword",
+                            ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                            _ => "application/octet-stream"
+                        };
+                    }
+
+                    var remoteBytes = await response.Content.ReadAsByteArrayAsync();
+                    var remoteDownloadName = string.IsNullOrWhiteSpace(profile.ResumeFileName)
+                        ? "resume"
+                        : profile.ResumeFileName;
+
+                    return File(remoteBytes, remoteContentType, remoteDownloadName);
+                }
+
+                var webRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+
                 var absolutePath = Path.Combine(
-                    _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
+                    webRoot,
                     profile.ResumeFilePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
 
                 if (!System.IO.File.Exists(absolutePath))

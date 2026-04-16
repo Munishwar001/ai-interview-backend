@@ -46,6 +46,24 @@ namespace AIInterview.Application.Services
             catch (Exception) { throw; }
         }
 
+        public async Task<int> GetProfileViewsAsync(string userId)
+        {
+            try
+            {
+                return await _repo.GetProfileViewsAsync(userId);
+            }
+            catch (Exception) { throw; }
+        }
+
+        public async Task<bool> IncrementProfileViewsByCompanyIdAsync(int companyId)
+        {
+            try
+            {
+                return await _repo.IncrementProfileViewsByCompanyIdAsync(companyId);
+            }
+            catch (Exception) { throw; }
+        }
+
         public async Task<object> UpdateImagesAsync(string userId, string? logoUrl, string? coverImageUrl)
         {
             try

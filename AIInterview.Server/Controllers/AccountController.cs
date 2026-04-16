@@ -2,18 +2,31 @@ using AIInterview.Application.Services;
 using AIInterview.Core.Constants;
 using AIInterview.Core.DTOs.Auth;
 using AIInterview.Infrastructure.Models;
+using AIInterview.Server.Models;
+using AIInterview.Server.Services;
+using DocumentFormat.OpenXml.Office2016.Excel;
 using Google.Apis.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Options;
+using System.Text;
 
 namespace AIInterview.Server.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class AccountController(UserManager<ApplicationUser> userManager , JwtAuthManager jwtAuthManager , IConfiguration configuration) : BaseController
+    [Authorize(Roles = AppRoles.JobSeeker + "," + AppRoles.Employer)]
+    public class AccountController(
+        UserManager<ApplicationUser> userManager,
+        JwtAuthManager jwtAuthManager,
+        IConfiguration configuration,
+        IOptions<ApplicationURLConfig> applicationURLConfig,
+        IEmailService emailService) : BaseController
     {
         [ApiExplorerSettings(IgnoreApi = true)]
+        [AllowAnonymous]
         [HttpPost("register")]
          public async Task<IActionResult> Register(RegisterModel registerDto)
         {
@@ -60,6 +73,7 @@ namespace AIInterview.Server.Controllers
 
         }
 
+        [AllowAnonymous]
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginReq login)
         {
@@ -95,6 +109,7 @@ namespace AIInterview.Server.Controllers
             }
         }
 
+        [AllowAnonymous]
         [HttpPost("refresh-token")]
         public async Task<IActionResult> RefreshToken(RefreshReq request)
         {
@@ -139,7 +154,6 @@ namespace AIInterview.Server.Controllers
             }
         }
 
-        [Authorize]
         [HttpPost("revoke-token")]
         public async Task<IActionResult> RevokeRefreshToken([FromBody] RevokeReq revokeRequest)
         {
@@ -154,6 +168,7 @@ namespace AIInterview.Server.Controllers
             }
         }
 
+        [AllowAnonymous]
         [HttpPost("google-login")]
         public async Task<IActionResult> GoogleLogin(GoogleLoginDto request)
         {
@@ -211,6 +226,61 @@ namespace AIInterview.Server.Controllers
             {
                 return CustomProblem500(ex.Message);
             }
+        }
+
+        [AllowAnonymous]
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword(ForgotPasswordReq model)
+        {
+            try
+            {
+                var user = await userManager.FindByEmailAsync(model.Email);
+                if (user == null)
+                    return Ok();
+
+                var token = await userManager.GeneratePasswordResetTokenAsync(user);
+                
+                string encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+
+                string resetPasswordLink =
+                         $"{applicationURLConfig.Value.HomeUrl}/reset-password" +
+                         $"?Uid={Uri.EscapeDataString(user.Id)}&code={encodedToken}";
+
+
+                await emailService.SendForgotPasswordEmail(model.Email, resetPasswordLink);
+
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                return CustomProblem500(ex.Message);
+            }
+        }
+
+        [AllowAnonymous]
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword(ResetPasswordReq request)
+        {
+            var user = await userManager.FindByIdAsync(request.Uid);
+            if (user == null)
+                return BadRequest("Invalid request.");
+
+            var decodedToken = Encoding.UTF8.GetString(
+                WebEncoders.Base64UrlDecode(request.Code)
+            );
+
+            var result = await userManager.ResetPasswordAsync(
+                user,
+                decodedToken,
+                request.NewPassword
+            );
+            if (!result.Succeeded)
+            {
+                var errorMessage = string.Join("; ", result.Errors.Select(x => x.Description));
+                return CustomProblem400(errorMessage);
+            }
+
+            return Ok(new { Message = "Password has been reset." });
         }
     }
 }

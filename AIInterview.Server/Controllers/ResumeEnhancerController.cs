@@ -1,4 +1,5 @@
 using AIInterview.Application.Services;
+using AIInterview.Core.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -6,7 +7,7 @@ namespace AIInterview.Server.Controllers
 {
     [ApiController]
     [Route("api/resume-enhancer")]
-    [Authorize]
+    [Authorize(Roles = AppRoles.JobSeeker)]
     public class ResumeEnhancerController : BaseController
     {
         private readonly ResumeEnhancerService _service;

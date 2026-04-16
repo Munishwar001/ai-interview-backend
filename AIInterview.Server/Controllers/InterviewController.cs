@@ -1,3 +1,4 @@
+using AIInterview.Core.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -5,7 +6,7 @@ namespace AIInterview.Server.Controllers
 {
     [ApiController]
     [Route("api/interview")]
-    [Authorize]
+    [Authorize(Roles = AppRoles.JobSeeker + "," + AppRoles.Employer)]
     public class InterviewController(IConfiguration configuration) : BaseController
     {
         /// <summary>

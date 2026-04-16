@@ -3,9 +3,11 @@ using AIInterview.Application.Services;
 using AIInterview.Core.Comman;
 using AIInterview.Infrastructure.Data;
 using AIInterview.Infrastructure.Seed;
+using AIInterview.Server.Models;
 using AIInterview.Server.Extensions;
 using AIInterview.Server.Hubs;
 using AIInterview.Server.Middlewares;
+using AIInterview.Server.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -36,6 +38,9 @@ namespace AIInterview.Server
                 options.UseNpgsql(connectionString));
 
             services.Configure<JwtConfig>(options => config.GetSection("Jwt").Bind(options));
+            services.Configure<CloudinarySettings>(options => config.GetSection("CloudinarySettings").Bind(options));
+            services.Configure<ApplicationURLConfig>(options => config.GetSection("ApplicationURLConfig").Bind(options));
+            services.Configure<EmailSettings>(config.GetSection("EmailSettings"));
             
             services.RegisterServices(connectionString);
 
@@ -71,6 +76,7 @@ namespace AIInterview.Server
 
             app.MapControllers();
             app.MapHub<InterviewHub>("/hubs/interview");
+            app.MapHub<ApplicationChatHub>("/hubs/application-chat");
 
             using var scope = app.Services.CreateScope();
             var services = scope.ServiceProvider;

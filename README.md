@@ -4,6 +4,14 @@ A production-ready .NET 10 backend for an AI-powered interview platform. Feature
 
 ---
 
+## 🚀 Quick Links
+
+- **Deployment Guide**: See [DEPLOYMENT.md](DEPLOYMENT.md) for production setup
+- **API Documentation**: Swagger UI available at `/swagger` endpoint
+- **Environment Setup**: Copy `appsettings.Development.json.example` and configure with your values
+
+---
+
 ## Tech Stack
 
 - .NET 10 / ASP.NET Core Web API
@@ -12,6 +20,8 @@ A production-ready .NET 10 backend for an AI-powered interview platform. Feature
 - Groq API (llama-3.1-8b-instant) — primary AI
 - Ollama (http://localhost:11434) — local AI fallback
 - Clean layered architecture: Core → Application → Infrastructure → Server
+- Docker & Docker Compose support
+- Email templates with HTML formatting
 
 ---
 
@@ -21,74 +31,114 @@ A production-ready .NET 10 backend for an AI-powered interview platform. Feature
 ├── AIInterview.Core/           # DTOs, constants, shared models
 ├── AIInterview.Application/    # Interfaces, services, business logic
 ├── AIInterview.Infrastructure/ # Dapper repositories, DbContext, migrations
-└── AIInterview.Server/         # Controllers, middleware, configuration
+├── AIInterview.Server/         # Controllers, middleware, configuration
+├── Templates/                  # Email templates (HTML)
+├── docker-compose.yml          # Development compose
+├── docker-compose.prod.yml     # Production compose
+├── DEPLOYMENT.md               # Production deployment guide
+└── deploy.sh / deploy.bat      # Deployment automation scripts
 ```
 
 ---
 
-## Getting Started
+## 🔧 Getting Started (Local Development)
 
 ### Prerequisites
 
-- .NET 10 SDK
-- PostgreSQL
-- (Optional) Ollama for local AI fallback — https://ollama.com
+- .NET 10 SDK ([download](https://dotnet.microsoft.com/download/dotnet))
+- PostgreSQL 15+ ([download](https://www.postgresql.org/download/))
+- (Optional) Docker & Docker Compose for containerized development
+- (Optional) Ollama for local AI fallback ([download](https://ollama.com))
 
-### 1. Clone & Configure
+### 1. Clone Repository
 
 ```bash
 git clone <repo-url>
 cd AIInterview.Server
 ```
 
-Edit `appsettings.Development.json`:
+### 2. Configure Environment
+
+**Option A: Manual Setup**
+
+Copy and edit configuration:
+```bash
+cd AIInterview.Server
+cp appsettings.Development.json.example appsettings.Development.json
+# Edit appsettings.Development.json with your values
+```
+
+**Option B: Docker Setup**
+
+Use the development docker-compose:
+```bash
+docker-compose up -d
+# This starts PostgreSQL, Ollama, and configures the database
+```
+
+### 3. Configure appsettings.Development.json
+
+Update these required values:
 
 ```json
 {
   "ConnectionStrings": {
-    "Default": "Host=localhost;Port=5432;Database=AI_Db;Username=postgres;Password=yourpassword"
+    "Default": "Host=localhost;Port=5432;Database=AI_Db;Username=postgres;Password=YOUR_PASSWORD"
   },
   "Jwt": {
-    "SecretKey": "your-secret-key-min-32-chars",
-    "Issuer": "yourIssuer",
-    "Audience": "yourAudience",
-    "AccessTokenExpiration": "60",
-    "RefreshTokenExpiration": "10080"
+    "SecretKey": "YourSecretKeyWithAtLeast32CharactersForDevelopment"
   },
   "Google": {
-    "ClientId": "your-google-client-id"
+    "ClientId": "your-google-oauth-client-id.apps.googleusercontent.com"
   },
   "Groq": {
     "ApiKey": "your-groq-api-key"
   },
-  "Ollama": {
-    "BaseUrl": "http://localhost:11434",
-    "Model": "llama3.2"
+  "CloudinarySettings": {
+    "CloudName": "your-cloudinary-cloud-name",
+    "ApiKey": "your-cloudinary-api-key",
+    "ApiSecret": "your-cloudinary-api-secret"
+  },
+  "EmailSettings": {
+    "Username": "your-email@gmail.com",
+    "Password": "your-app-specific-password"
   }
 }
 ```
 
-Get a free Groq API key at https://console.groq.com
+**API Keys & Credentials:**
+- **Groq API**: Get free key at https://console.groq.com
+- **Google OAuth**: Set up at https://console.cloud.google.com
+- **Cloudinary**: Sign up at https://cloudinary.com
+- **Gmail App Password**: Enable 2FA and generate at https://myaccount.google.com/apppasswords
 
-### 2. Run Database Migrations
+### 4. Run Database Migrations
 
 ```bash
+# Apply migrations using EF Core
 dotnet ef database update --project AIInterview.Infrastructure --startup-project AIInterview.Server
 ```
 
-For mock interview tables (Dapper — run manually in PostgreSQL):
-
-```bash
-psql -U postgres -d AI_Db -f AIInterview.Infrastructure/Migrations/mock_interview_tables.sql
-```
-
-### 3. Run the Server
+### 5. Run the Server
 
 ```bash
 dotnet run --project AIInterview.Server
 ```
 
-Swagger UI: https://localhost:7129/swagger
+**Endpoints:**
+- API: `https://localhost:7129`
+- Swagger UI: `https://localhost:7129/swagger`
+- Health Check: `https://localhost:7129/health`
+
+---
+
+## 📧 Email Template
+
+Forgot-password emails use HTML template from `Templates/ForgotPasswordTemplate.html` with dynamic placeholders:
+- `{{USER_EMAIL}}` — User's email address
+- `{{RESET_URL}}` — Password reset link
+
+Edit the template to customize styling and content.
 
 ---
 
@@ -255,4 +305,7 @@ After 5 questions `isCompleted` becomes `true` and `feedbackSummary` contains th
 | `Groq:ApiKey` | Groq API key (console.groq.com) |
 | `Ollama:BaseUrl` | Ollama base URL (default: http://localhost:11434) |
 | `Ollama:Model` | Ollama model name (default: llama3.2) |
+| `CloudinarySettings:CloudName` | Cloudinary cloud name |
+| `CloudinarySettings:ApiKey` | Cloudinary API key |
+| `CloudinarySettings:ApiSecret` | Cloudinary API secret |
 | `Cors:AllowedOrigins` | Array of allowed frontend origins |

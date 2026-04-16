@@ -51,6 +51,18 @@ namespace AIInterview.Application.Services
             catch (Exception) { throw; }
         }
 
+        public async Task<int> GetProfileViewsAsync(string userId)
+        {
+            try { return await _profileRepo.GetProfileViewsAsync(userId); }
+            catch (Exception) { throw; }
+        }
+
+        public async Task<bool> IncrementProfileViewsAsync(string userId)
+        {
+            try { return await _profileRepo.IncrementProfileViewsAsync(userId); }
+            catch (Exception) { throw; }
+        }
+
         private static int CalculateProfileCompletion(UpsertUserProfileDto dto, bool hasResume = false, bool hasSkills = false)
         {
             var fields = new[]
@@ -107,24 +119,13 @@ namespace AIInterview.Application.Services
             catch (Exception) { throw; }
         }
 
-        public async Task<bool> DeleteAvatarAsync(string userId, string webRootPath)
+        public async Task<bool> DeleteAvatarAsync(string userId)
         {
             try
             {
                 var profile = await _profileRepo.GetByUserIdAsync(userId);
                 if (profile == null || string.IsNullOrEmpty(profile.Avatar))
                     return false;
-
-                // Only delete if it's a local file (not an external URL)
-                if (!profile.Avatar.StartsWith("http", StringComparison.OrdinalIgnoreCase))
-                {
-                    var absolutePath = Path.Combine(
-                        webRootPath,
-                        profile.Avatar.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
-
-                    if (File.Exists(absolutePath))
-                        File.Delete(absolutePath);
-                }
 
                 var result = await _profileRepo.DeleteAvatarAsync(userId);
 
@@ -154,20 +155,13 @@ namespace AIInterview.Application.Services
             catch (Exception) { throw; }
         }
 
-        public async Task<bool> DeleteResumeAsync(string userId, string webRootPath)
+        public async Task<bool> DeleteResumeAsync(string userId)
         {
             try
             {
                 var profile = await _profileRepo.GetByUserIdAsync(userId);
                 if (profile == null || string.IsNullOrEmpty(profile.ResumeFilePath))
                     return false;
-
-                var absolutePath = Path.Combine(
-                    webRootPath,
-                    profile.ResumeFilePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
-
-                if (File.Exists(absolutePath))
-                    File.Delete(absolutePath);
 
                 var result = await _profileRepo.DeleteResumeAsync(userId);
 
