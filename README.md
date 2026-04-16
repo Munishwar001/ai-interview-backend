@@ -137,6 +137,7 @@ dotnet run --project AIInterview.Server
 Forgot-password emails use HTML template from `Templates/ForgotPasswordTemplate.html` with dynamic placeholders:
 - `{{USER_EMAIL}}` — User's email address
 - `{{RESET_URL}}` — Password reset link
+- `{{RESET_CODE}}` — Short reset reference code shown in email
 
 Edit the template to customize styling and content.
 
@@ -176,6 +177,14 @@ All endpoints require `Authorization: Bearer <token>` unless marked public.
 | POST | `/api/account/refresh` | Refresh access token | Public |
 | POST | `/api/account/google-login` | Google OAuth login | Public |
 | POST | `/api/account/logout` | Logout | Required |
+
+### Identity Password Policy
+
+- Minimum length: `6` characters
+- No required digit
+- No required lowercase
+- No required uppercase
+- No required special character
 
 ### Job Seeker — `/api/jobseeker`
 
