@@ -1,4 +1,5 @@
 using AIInterview.Application.Services;
+using AIInterview.Core.Constants;
 using AIInterview.Core.DTOs.MockInterview;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -7,7 +8,7 @@ namespace AIInterview.Server.Controllers
 {
     [ApiController]
     [Route("api/mock-interview")]
-    [Authorize]
+    [Authorize(Roles = AppRoles.JobSeeker)]
     public class MockInterviewController : BaseController
     {
         private readonly MockInterviewService _service;

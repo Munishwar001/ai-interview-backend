@@ -14,25 +14,43 @@
     ]
   },
   "Jwt": {
-    "SecretKey": "YOUR_JWT_SECRET_MIN_32_CHARS",
-    "Issuer": "YOUR_ISSUER",
-    "Audience": "YOUR_AUDIENCE",
+    "SecretKey": "YOUR_JWT_SECRET_MIN_32_CHARS_LONG_ENOUGH_FOR_HS256",
+    "Issuer": "AIInterviewApp",
+    "Audience": "AIInterviewUsers",
     "AccessTokenExpiration": "60",
     "RefreshTokenExpiration": "10080"
   },
   "Google": {
-    "ClientId": "YOUR_GOOGLE_CLIENT_ID"
-  },
-  "Gemini": {
-    "ApiKey": "YOUR_GEMINI_API_KEY"
+    "ClientId": "YOUR_GOOGLE_CLIENT_ID_FROM_CONSOLE_CLOUD_GOOGLE_COM"
   },
   "Groq": {
-    "ApiKey": "YOUR_GROQ_API_KEY"
+    "ApiKey": "YOUR_GROQ_API_KEY_FROM_CONSOLE_GROQ_COM"
+  },
+  "Ollama": {
+    "BaseUrl": "http://localhost:11434",
+    "Model": "llama3.2"
+  },
+  "Turn": {
+    "Url": "turn:openrelay.metered.ca:80",
+    "Username": "openrelayproject",
+    "Password": "openrelayproject"
   },
   "CloudinarySettings": {
     "CloudName": "YOUR_CLOUDINARY_CLOUD_NAME",
     "ApiKey": "YOUR_CLOUDINARY_API_KEY",
     "ApiSecret": "YOUR_CLOUDINARY_API_SECRET"
+  },
+  "ApplicationURLConfig": {
+    "HomeUrl": "http://localhost:4200"
+  },
+  "EmailSettings": {
+    "SmtpHost": "smtp.gmail.com",
+    "SmtpPort": 587,
+    "FromEmail": "your-email@gmail.com",
+    "FromName": "AI Interview",
+    "Username": "YOUR_SMTP_USERNAME",
+    "Password": "YOUR_SMTP_PASSWORD_OR_APP_SPECIFIC_PASSWORD",
+    "EnableSsl": true
   },
   "AllowedHosts": "*"
 }

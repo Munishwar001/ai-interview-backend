@@ -1,5 +1,6 @@
 using AIInterview.Application.Interface;
 using AIInterview.Application.Services;
+using AIInterview.Core.Constants;
 using AIInterview.Core.DTOs.Company;
 using AIInterview.Server.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -9,7 +10,7 @@ namespace AIInterview.Server.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    [Authorize(Roles = AppRoles.Employer)]
     public class CompanyProfileController : BaseController
     {
         private readonly CompanyService _companyService;

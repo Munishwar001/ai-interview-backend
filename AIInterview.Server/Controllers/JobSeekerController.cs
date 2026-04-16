@@ -1,4 +1,5 @@
 using AIInterview.Application.Services;
+using AIInterview.Core.Constants;
 using AIInterview.Core.DTOs.JobSeeker;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +9,7 @@ namespace AIInterview.Server.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    [Authorize(Roles = AppRoles.JobSeeker)]
     public class JobSeekerController : BaseController
     {
         private readonly JobSeekerService _jobSeekerService;

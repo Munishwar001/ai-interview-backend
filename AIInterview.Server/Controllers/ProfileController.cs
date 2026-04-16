@@ -8,13 +8,12 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AIInterview.Server.Controllers
 {
-    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Roles = AppRoles.JobSeeker + "," + AppRoles.Employer)]
     public class ProfileController(UserManager<ApplicationUser> userManager, UserService userService) : BaseController
     {
         [HttpGet]
-        [Authorize]
         public async Task<IActionResult> GetUserDetails()
         {
             try

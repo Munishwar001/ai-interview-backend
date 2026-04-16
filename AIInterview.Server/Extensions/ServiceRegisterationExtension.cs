@@ -9,6 +9,7 @@ namespace AIInterview.Server.Extensions
         public static IServiceCollection RegisterServices(this IServiceCollection services, string connectionString)
         {
             services.AddSingleton<ICloudinaryFileService, CloudinaryFileService>();
+            services.AddScoped<IEmailService, EmailService>();
             services.RegisterApplicationServices();
             services.RegisterInfrastructureServices(connectionString);
             return services;

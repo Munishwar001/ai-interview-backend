@@ -39,6 +39,8 @@ namespace AIInterview.Server
 
             services.Configure<JwtConfig>(options => config.GetSection("Jwt").Bind(options));
             services.Configure<CloudinarySettings>(options => config.GetSection("CloudinarySettings").Bind(options));
+            services.Configure<ApplicationURLConfig>(options => config.GetSection("ApplicationURLConfig").Bind(options));
+            services.Configure<EmailSettings>(config.GetSection("EmailSettings"));
             
             services.RegisterServices(connectionString);
 
